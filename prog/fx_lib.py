@@ -294,8 +294,9 @@ def get_set_bonus(df, item_df):
     return df
 
 def enhance_mult(x):
-    y = np.where( (st.GEAR_12 == 1) & (x < 12) , 3.3/x.map(gear_scaling) , 1 )
-    return y
+    y = st.GEAR_LVL
+    z = np.where( (x < y) , gear_scaling[y]/x.map(gear_scaling) , 1 )
+    return z
 
 def set_sum(df):
     # print("started function set sum:   ", datetime.now())
