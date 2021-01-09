@@ -15,7 +15,7 @@ import yaml
 with open(r'../inp/character_inputs.yaml') as file:
     target_stats = yaml.load(file, Loader=yaml.FullLoader)
 
-with open('../inp/lellian_master.json') as json_file:
+with open('../inp/master_data.json') as json_file:
     data = json.load(json_file)
 
 # ##### HEROES
@@ -65,7 +65,7 @@ for j in range(0,len(hero_order)):
     print(char, include_sets)
 
     gear_comb_dict = fx.set_combo(sc.df_items[(sc.df_items.set.isin(include_sets))|(sc.df_items.hero==char)], char, sc.l4, sc.l2)  ## Output gear_comb_dict[ [set_nm] , [type] , [ID] ]
-    sc_output = sc.set_combination_iterate(gear_comb_dict, fx.set_4[fx.set_4.Set_Nm.isin(include_sets)].Set_Nm.values , fx.set_2[fx.set_2.Set_Nm.isin(include_sets)].Set_Nm.values)
+    sc_output = sc.set_combination_iterate(gear_comb_dict, fx.set_4[fx.set_4.Set_Nm.isin(include_sets)].Set_Nm.values , fx.set_2[fx.set_2.Set_Nm.isin(include_sets)].Set_Nm.values, only4_flag = 0)
     print('sc_out length ', len(sc_output) , "   ", datetime.now())
     if len(sc_output) == 0:
         user_input = input("""No combinations were found for this hero.  Please enter one of [Skip, Retry, Exit] """ )
@@ -76,7 +76,7 @@ for j in range(0,len(hero_order)):
             include_sets = fx.gen_input_sets([], exclude_sets)
             print(char, include_sets)
             gear_comb_dict = fx.set_combo(sc.df_items[(sc.df_items.set.isin(include_sets))|(sc.df_items.hero==char)], char, sc.l4, sc.l2)  ## Output gear_comb_dict[ [set_nm] , [type] , [ID] ]
-            sc_output = sc.set_combination_iterate(gear_comb_dict, fx.set_A[fx.set_A.Set_Nm.isin(include_sets)].Set_Nm.values , fx.set_2[fx.set_2.Set_Nm.isin(include_sets)].Set_Nm.values)
+            sc_output = sc.set_combination_iterate(gear_comb_dict, fx.set_A[fx.set_A.Set_Nm.isin(include_sets)].Set_Nm.values , fx.set_2[fx.set_2.Set_Nm.isin(include_sets)].Set_Nm.values, only4_flag = 0)
             print('sc_out length ', len(sc_output) , "   ", datetime.now())
         elif user_input == 'Skip':
             continue
@@ -172,8 +172,7 @@ for j in range(0,len(hero_order)):
 
     print("complete hero: ", char)
 
-    if st.REPLACE_GEAR == 1:
-        sc.df_items['hero'] = np.where((sc.df_items.hero == char)&(sc.df_items.hero != sc.df_items.reco),'',sc.df_items.hero)
+    sc.df_items['hero'] = np.where((sc.df_items.hero == char)&(sc.df_items.hero != sc.df_items.reco),'',sc.df_items.hero)
 
     sc.df_items = sc.df_items.sort_values(by = ['hero','reco','Type','efficiency','enhance'])
     sc.df_items.to_pickle('../outp/upd_items.pkl')

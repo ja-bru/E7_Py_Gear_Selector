@@ -1,0 +1,132 @@
+---
+  ### Target character optimization constraints
+Hero_Order:
+  ## heroes to run optimization in this run
+  [
+    'Yufine','Angelic Montmorancy','Dizzy',
+  ]
+
+Lock_Gear:
+  ## if setup file uses equipped gear, enter locked heroes below to prevent their gear being stolen
+    [
+      ''
+    ]
+
+Type:  {
+  "Dizzy": "Debuffer",
+  "Angelic Montmorancy": "HP_Tank",
+  "Yufine": "Bruiser"
+  }
+
+"General":  {
+  "input_sets": [],
+  "exclude_sets": ['Lifesteal','Unity','Rage','Counter','Destruction','Immunity'],
+  "autofill_sets": 0,
+  "ATK": {"Min": 0,"Max": 999999,"Weight": 1 },
+  "CRIT": {"Min": 0 ,"Max": 101 ,"Weight": 1 },
+  "CDMG": { "Min": 150 ,"Max": 999 ,"Weight": 1 },
+  "SPD": { "Min": 100 ,"Max": 999 ,"Weight": 1 },
+  "HP": { "Min": 0 ,"Max": 99999 ,"Weight": 1 },
+  "DEF": { "Min": 0 ,"Max": 9999 ,"Weight": 1 },
+  "EFF": { "Min": 0 ,"Max": 101 ,"Weight": 1 },
+  "RES": { "Min": 0 ,"Max": 101 ,"Weight": 1 },
+  "Dmg_Rating": { "Min": 0 ,"Max": 999999 ,"Weight": 1 },
+  "EHP": { "Min": 0 ,"Max": 999999 ,"Weight": 1 },
+  "Prio": ['SPD','EHP','Dmg_Rating']
+}
+"HP_Tank":  {
+  "input_sets": [],
+  "exclude_sets": ['Lifesteal','Unity','Rage','Counter','Destruction'],
+  "autofill_sets": 0,
+  "ATK": {"Min": 0,"Max": 999999,"Weight": 1 },
+  "CRIT": {"Min": 0 ,"Max": 101 ,"Weight": 1 },
+  "CDMG": { "Min": 150 ,"Max": 999 ,"Weight": 1 },
+  "SPD": { "Min": 100 ,"Max": 999 ,"Weight": 2 },
+  "HP": { "Min": 10000 ,"Max": 99999 ,"Weight": 3 },
+  "DEF": { "Min": 0 ,"Max": 9999 ,"Weight": 1 },
+  "EFF": { "Min": 0 ,"Max": 101 ,"Weight": 1 },
+  "RES": { "Min": 0 ,"Max": 101 ,"Weight": 2 },
+  "Dmg_Rating": { "Min": 0 ,"Max": 999999 ,"Weight": 1 },
+  "EHP": { "Min": 0 ,"Max": 999999 ,"Weight": 1 },
+  "Prio": ['HP','SPD','EHP']
+}
+"Def_Tank":  {
+  "input_sets": ['Health','Defense','Speed'],
+  "exclude_sets": ['Lifesteal','Unity','Rage'],
+  "autofill_sets": 0,
+  "ATK": {"Min": 0,"Max": 999999,"Weight": 1},
+  "CRIT": {"Min": 0 ,"Max": 101 ,"Weight": 1 },
+  "CDMG": { "Min": 150 ,"Max": 999 ,"Weight": 1 },
+  "SPD": { "Min": 130 ,"Max": 999 ,"Weight": 1 },
+  "HP": { "Min": 10000 ,"Max": 99999 ,"Weight": 1 },
+  "DEF": { "Min": 800 ,"Max": 9999 ,"Weight": 2 },
+  "EFF": { "Min": 30 ,"Max": 100 ,"Weight": 1 },
+  "RES": { "Min": 0 ,"Max": 100 ,"Weight": 1 },
+  "Dmg_Rating": { "Min": 0 ,"Max": 999999 ,"Weight": 1 },
+  "EHP": { "Min": 0 ,"Max": 999999 ,"Weight": 1 },
+  "Prio": ['EHP','DEF','EFF']
+}
+"Atk_Healer":  {
+  "input_sets": ['Speed'],
+  "exclude_sets": ['Lifesteal','Unity','Rage','Counter','Destruction'],
+  "autofill_sets": 0,
+  "ATK": {"Min": 0,"Max": 999999,"Weight": 2 },
+  "CRIT": {"Min": 0 ,"Max": 101 ,"Weight": 1 },
+  "CDMG": { "Min": 150 ,"Max": 999 ,"Weight": 1 },
+  "SPD": { "Min": 140 ,"Max": 999 ,"Weight": 2 },
+  "HP": { "Min": 0 ,"Max": 99999 ,"Weight": 2 },
+  "DEF": { "Min": 0 ,"Max": 9999 ,"Weight": 1 },
+  "EFF": { "Min": 0 ,"Max": 100 ,"Weight": 1 },
+  "RES": { "Min": 0 ,"Max": 100 ,"Weight": 1 },
+  "Dmg_Rating": { "Min": 0 ,"Max": 999999 ,"Weight": 1 },
+  "EHP": { "Min": 0 ,"Max": 999999 ,"Weight": 1 },
+  "Prio": ['SPD','EHP','ATK']
+}
+"Bruiser":  {
+  "input_sets": [],
+  "exclude_sets": ['Unity','Counter','Immunity','Resist'],
+  "autofill_sets": 0,
+  "ATK": {"Min": 0,"Max": 999999,"Weight": 2 },
+  "CRIT": {"Min": 40 ,"Max": 101 ,"Weight": 2 },
+  "CDMG": { "Min": 150 ,"Max": 999 ,"Weight": 2 },
+  "SPD": { "Min": 100 ,"Max": 999 ,"Weight": 2 },
+  "HP": { "Min": 0 ,"Max": 99999 ,"Weight": 1 },
+  "DEF": { "Min": 0 ,"Max": 9999 ,"Weight": 1 },
+  "EFF": { "Min": 0 ,"Max": 101 ,"Weight": 0.5 },
+  "RES": { "Min": 0 ,"Max": 101 ,"Weight": 1 },
+  "Dmg_Rating": { "Min": 0 ,"Max": 999999 ,"Weight": 1 },
+  "EHP": { "Min": 0 ,"Max": 999999 ,"Weight": 1 },
+  "Prio": ['Dmg_Rating','SPD']
+}
+"Debuffer":  {
+  "input_sets": [],
+  "exclude_sets": ['Lifesteal','Unity','Rage','Destruction','Immunity'],
+  "autofill_sets": 0,
+  "ATK": {"Min": 0,"Max": 999999,"Weight": 2 },
+  "CRIT": {"Min": 0 ,"Max": 101 ,"Weight": 1.5 },
+  "CDMG": { "Min": 150 ,"Max": 999 ,"Weight": 1 },
+  "SPD": { "Min": 120 ,"Max": 999 ,"Weight": 3 },
+  "HP": { "Min": 0 ,"Max": 99999 ,"Weight": 0.7 },
+  "DEF": { "Min": 0 ,"Max": 9999 ,"Weight": 0.7 },
+  "EFF": { "Min": 40 ,"Max": 101 ,"Weight": 2 },
+  "RES": { "Min": 0 ,"Max": 101 ,"Weight": 0.7 },
+  "Dmg_Rating": { "Min": 0 ,"Max": 999999 ,"Weight": 1 },
+  "EHP": { "Min": 0 ,"Max": 999999 ,"Weight": 1 },
+  "Prio": ['SPD','EHP','Dmg_Rating']
+}
+"Booster":  {
+  "input_sets": ['Speed'],
+  "exclude_sets": ['Lifesteal','Unity','Rage','Counter'],
+  "autofill_sets": 0,
+  "ATK": {"Min": 0,"Max": 999999,"Weight": 1 },
+  "CRIT": {"Min": 0 ,"Max": 101 ,"Weight": 1 },
+  "CDMG": { "Min": 150 ,"Max": 999 ,"Weight": 1 },
+  "SPD": { "Min": 180 ,"Max": 999 ,"Weight": 3 },
+  "HP": { "Min": 0 ,"Max": 99999 ,"Weight": 1 },
+  "DEF": { "Min": 0 ,"Max": 9999 ,"Weight": 1 },
+  "EFF": { "Min": 30 ,"Max": 100 ,"Weight": 1 },
+  "RES": { "Min": 0 ,"Max": 100 ,"Weight": 1 },
+  "Dmg_Rating": { "Min": 0 ,"Max": 999999 ,"Weight": 1 },
+  "EHP": { "Min": 0 ,"Max": 999999 ,"Weight": 1 },
+  "Prio": ['SPD','SPD','EHP']
+}

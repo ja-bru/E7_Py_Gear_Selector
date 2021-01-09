@@ -10,7 +10,7 @@ import setup as st
 import fx_lib as fx
 
 # #### DATA IMPORT
-with open('../inp/lellian_master.json') as json_file:
+with open('../inp/master_data.json') as json_file:
     data = json.load(json_file)
 
 # ##### HEROES
