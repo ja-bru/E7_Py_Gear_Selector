@@ -20,30 +20,20 @@ set_2 = set_df[['Set','Set_Nm','Set_Lg']][set_df.Set_Lg == 2]
 subs_cols = ['subStat1','subStat2','subStat3','subStat4']
 
 # ### FUNCTIONS
+def verify_inputs():
+    if st.MIN_LEVEL != 60: st.MIN_LEVEL = 50
+    if ~(isinstance(st.GEAR_LVL, int) & (0<=st.GEAR_LVL<=15)): st.GEAR_LVL = 12
+    if ~(0<=st.FLAT_SUB<=1): st.FLAT_SUB = 0.8
+    if ~(0<=st.FLAT_MAIN<=1): st.FLAT_MAIN = 0.5
+    return
+
 def hero_json_to_df(chars, data):
     df = pd.DataFrame( chars , columns = ['Name'] )
     df2 = pd.DataFrame(data['heroes'])
     df = pd.merge(df,df2[['Name','Lvl','BonusStats']],how='left',on=['Name'])
-    df['Lvl'] = df['Lvl'].fillna(50)
-    df['Lvl'] = df['Lvl'].clip(lower=50)
-    char_df = pd.read_csv('../inp/character_data.csv')
-    df = df.merge(char_df, how='left', left_on = ['Name','Lvl'], right_on = ['Character','Level'])
-    return df
-
-def hero_json_to_df_v2(data):
-    df = pd.DataFrame(data['heroes'])
-    for j in range (0,6):
-        gear = []
-        for i in df.index:
-            if df['Gear'][i]:
-                if df['Gear'][i][j]:
-                    dc = df['Gear'][i][j]
-                    gear.append(dc["ID"])
-                else: gear.append(None)
-            else: gear.append(None)
-        col_name = ('gear_id_'+str(j))
-        df[col_name] = gear
-    df['Lvl'] = df['Lvl'].clip(lower=50)
+    print(df)
+    df['Lvl'] = df['Lvl'].fillna(st.MIN_LEVEL)
+    df['Lvl'] = df['Lvl'].clip(lower=st.MIN_LEVEL)
     char_df = pd.read_csv('../inp/character_data.csv')
     df = df.merge(char_df, how='left', left_on = ['Name','Lvl'], right_on = ['Character','Level'])
     return df

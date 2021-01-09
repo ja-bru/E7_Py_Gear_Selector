@@ -18,6 +18,9 @@ with open(r'../inp/character_inputs.yaml') as file:
 with open('../inp/master_data.json') as json_file:
     data = json.load(json_file)
 
+# CATCH INPUT ERRORS
+fx.verify_inputs()
+
 # ##### HEROES
 hero_order = target_stats['Hero_Order']
 df_hero = fx.hero_json_to_df(hero_order, data)
@@ -184,7 +187,6 @@ sc.df_items[~sc.df_items.reco.isnull()][['start_loc','hero','efficiency','rating
 sc.df_items['hero'] = np.where( (~sc.df_items.reco.isnull()), sc.df_items['reco'],sc.df_items['hero'])
 sc.df_items.to_pickle('../outp/equip_potential.pkl')
 
-reco_df.to_csv('../reco/hero_stats.csv')
 sc.df_items = sc.df_items.sort_values(by = ['hero','Type','efficiency','enhance'])
 export2 = sc.df_items[['efficiency','hero','enhance','slot','level','set','rarity','mainStat','subStat1','subStat2','subStat3','subStat4','id','p_id','locked']].to_dict('records')
 with open('../outp/upd_items.json', 'w') as fp: json.dump(export2, fp)
