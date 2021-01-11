@@ -23,7 +23,7 @@ subs_cols = ['subStat1','subStat2','subStat3','subStat4']
 # ### FUNCTIONS
 def verify_setup():
     print("Checking program configuration")
-    if st.SELECTOR != 1:  print("Automated optimization is set, all heroes will run in order without user input to select gear")
+    if st.MANUAL_SELECTION != 1:  print("Automated optimization is set, all heroes will run in order without user input to select gear")
     if st.MIN_LEVEL != 60:  st.MIN_LEVEL = 50
     if ~(isinstance(st.GEAR_LVL, int) & (0<=st.GEAR_LVL<=15)): st.GEAR_LVL = 12
     if ~(0<=st.FLAT_SUB<=1):
@@ -83,7 +83,6 @@ def hero_json_to_df(chars, data):
     df = pd.DataFrame( chars , columns = ['Name'] )
     df2 = pd.DataFrame(data['heroes'])
     df = pd.merge(df,df2[['Name','Lvl','BonusStats']],how='left',on=['Name'])
-    print(df)
     df['Lvl'] = df['Lvl'].fillna(st.MIN_LEVEL)
     df['Lvl'] = df['Lvl'].clip(lower=st.MIN_LEVEL)
     char_df = pd.read_csv('../inp/character_data.csv')
@@ -352,7 +351,6 @@ def bonus_eqp_sum(hero_df):
     return bonus_eqp_df
 
 def get_combo_stats(df, df_hero, mainst_df, subst_df, setst_df, hero_ee, char, target_stats):#, mainst_df, subst_df, setst_df):
-    print("started function get combo stats:   ", datetime.now())
     df['Char'] = [char] * len(df)
     df['ATK'] =  (df_hero[df_hero.Name == char]['Atk'].values[0]   *(100+mainst_df['ATK%']+subst_df['ATK%']+setst_df['ATK']+hero_ee['AtkP'])/100  +mainst_df['ATK']+subst_df['ATK']+hero_ee['Atk']).astype(int)
     df['HP'] =   (df_hero[df_hero.Name == char]['HP'].values[0]    *(100+mainst_df['HP%']+subst_df['HP%']+setst_df['HP']+hero_ee['HPP'])/100   +mainst_df['HP'] +subst_df['HP']+hero_ee['HP']).astype(int)

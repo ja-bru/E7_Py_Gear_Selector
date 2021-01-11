@@ -3,7 +3,7 @@
 ## THESE SETTINGS WILL DETERMINE HOW THE PROGRAM RUNS
 
 ## RUN SETTINGS
-SELECTOR = 0            ##  MANUAL RUN VERSUS AUTOMATED RUN {1:  Program will run with user prompt to select gear from a refined list}
+MANUAL_SELECTION = 0    ##  MANUAL RUN VERSUS AUTOMATED RUN {1:  Program will run with user prompt to select gear from a refined list}
 GEAR_LIMIT = 5         ## This variable impacts run time.  It is the default number of gear items for each slot to use in optimization
 AUTO_ADJ_GEAR_LIMIT = 1 ## Adjusts the number of gear pieces selected based on combinations to optimize run time vs available selections
 
