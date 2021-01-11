@@ -2,6 +2,7 @@
 
 import pandas as pd
 import numpy as np
+import math
 import itertools
 import setup as st
 from datetime import datetime
@@ -20,12 +21,63 @@ set_2 = set_df[['Set','Set_Nm','Set_Lg']][set_df.Set_Lg == 2]
 subs_cols = ['subStat1','subStat2','subStat3','subStat4']
 
 # ### FUNCTIONS
-def verify_inputs():
-    if st.MIN_LEVEL != 60: st.MIN_LEVEL = 50
+def verify_setup():
+    print("Checking program configuration")
+    if st.SELECTOR != 1:  print("Automated optimization is set, all heroes will run in order without user input to select gear")
+    if st.MIN_LEVEL != 60:  st.MIN_LEVEL = 50
     if ~(isinstance(st.GEAR_LVL, int) & (0<=st.GEAR_LVL<=15)): st.GEAR_LVL = 12
-    if ~(0<=st.FLAT_SUB<=1): st.FLAT_SUB = 0.8
-    if ~(0<=st.FLAT_MAIN<=1): st.FLAT_MAIN = 0.5
+    if ~(0<=st.FLAT_SUB<=1):
+        st.FLAT_SUB = 0.8
+        print("Flat sub weighting is outside limits, set to default of 80%")
+    if ~(0<=st.FLAT_MAIN<=1):
+        st.FLAT_MAIN = 0.5
+        print("Flat main stat weighting (Neck,Ring,Boot) is outside limits, set to default of 50%")
+    if st.KEEP_CURR_EQUIP == 1:  print("Gear currently equipped on the hero will be kept")
+    else:  print("Gear currently equipped on your heroes may be replaced during optimization")
     return
+
+def verify_item_input(df):
+    check_error = 0
+    gear_lvl = df['level']
+    enhance = df['enhance']
+    tier = gear_tier[gear_tier.Level == gear_lvl]['Tier'].values[0]
+    ##check main stat and enhance level
+    main_type = df['mainStat'][0]
+    main_val = df['mainStat'][1]
+    gear_type = df['Type']
+    check_error += verify_main_stats(gear_lvl, enhance, main_type, main_val, gear_type)
+    ##check substats
+    grt_col = "max_" + tier.lower()
+    pwrup = math.floor( enhance / 3 )
+    tot_pwr = 0
+    for stat in gear_rating_lookup.stat.values:
+        sub_limit = gear_rating_lookup[gear_rating_lookup.stat == stat][grt_col].values
+        if stat in (['CRIT','CDMG','HP%','ATK%','DEF%','EFF','RES']):
+            sub_limit = sub_limit * 100
+        val = df[stat]
+        tot_pwr += math.ceil(val / sub_limit)
+        sub_pred = (1+pwrup) * sub_limit
+        if sub_pred < val:  check_error+=1
+        if (val > 0) & (gear_rating_lookup[gear_rating_lookup.stat == stat]['stat_in'].values == main_type):  check_error+=1
+    if (4 - df['grade'] + pwrup) < tot_pwr:
+        check_error += 100
+        print( 4 - df['grade'] + pwrup , tot_pwr)
+    return check_error
+def verify_main_stats(gear_lvl, enhance, main_type, main_val, gear_type):
+    main_error = 0
+    ##main type
+    if (gear_type == 0) & (main_type != 'Atk'): main_error = 1
+    if (gear_type == 1) & (main_type != 'HP'): main_error = 1
+    if (gear_type == 2) & (main_type != 'Def'): main_error = 1
+    if (gear_type == 3) & (main_type in(['Eff','Res','Spd'])): main_error = 1
+    if (gear_type == 4) & (main_type in(['CChance','CDmg','Spd'])): main_error = 1
+    if (gear_type == 5) & (main_type in(['CChance','CDmg','Eff','Res'])): main_error = 1
+    ##main stat
+    base_stat = gear_tier[(gear_tier.Level == gear_lvl)][main_type].values[0]
+    projected_stat = base_stat * grt.gear_scaling[enhance]
+    if (main_val > projected_stat*1.01) | (main_val < projected_stat * 0.88):
+        main_error += 1
+    return main_error*10
 
 def hero_json_to_df(chars, data):
     df = pd.DataFrame( chars , columns = ['Name'] )
@@ -109,11 +161,11 @@ def set_combo(item_df, hero_name, l4, l2):
     if st.NO_EQUIPPED_GEAR == 1:
         temp_df = temp_df[ (temp_df.hero == '') | (temp_df.hero.isnull()) | (temp_df.hero == hero_name) ]
     temp_df.sort_values(by = ['rating'], ascending = False, inplace=True)
-    if st.USE_CURR_EQUIP == 1:
+    if st.KEEP_CURR_EQUIP == 1:
         temp_slots = temp_df[(temp_df.hero == hero_name)].Type.values
         temp_df = temp_df[(~temp_df.Type.isin(temp_slots)) | (temp_df.hero == hero_name)]
         temp_df = temp_df.groupby('slot').head(st.GEAR_LIMIT).reset_index(drop=True)
-    if st.USE_CURR_EQUIP == 0:
+    else:
         temp_df_b = temp_df.groupby('slot').head(st.GEAR_LIMIT).reset_index(drop=True)
         temp_df_c = temp_df.groupby(['slot','set']).head(1).reset_index(drop=True)
         temp_df.sort_values(by = ['efficiency'], ascending = False, inplace=True)

@@ -19,7 +19,7 @@ with open('../inp/master_data.json') as json_file:
     data = json.load(json_file)
 
 # CATCH INPUT ERRORS
-fx.verify_inputs()
+fx.verify_setup()
 
 # ##### HEROES
 hero_order = target_stats['Hero_Order']

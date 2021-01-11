@@ -10,7 +10,7 @@ AUTO_ADJ_GEAR_LIMIT = 1 ## Adjusts the number of gear pieces selected based on c
 ## GEAR SELECTION
 COMPLETE_SETS = 1       ## This program will only generate complete gear sets at this time
 NO_EQUIPPED_GEAR = 1    ## {0,1)} {1: will use unequipped gear only;  0: uses equipped gear that is not locked}
-USE_CURR_EQUIP = 0      ## Keeps any currently equipped gear on the hero
+KEEP_CURR_EQUIP = 0      ## Keeps any currently equipped gear on the hero
 
 ## HERO CRITERIA
 MIN_LEVEL = 50          ## Default Hero level of either 50 or 60 for stat calculation
