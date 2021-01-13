@@ -8,14 +8,14 @@ GEAR_LIMIT = 5         ## This variable impacts run time.  It is the default num
 AUTO_ADJ_GEAR_LIMIT = 1 ## Adjusts the number of gear pieces selected based on combinations to optimize run time vs available selections
 
 ## GEAR SELECTION
-COMPLETE_SETS = 1       ## This program will only generate complete gear sets at this time
+USE_BROKEN_SETS = 0      ## This program will only generate complete gear sets at this time
 NO_EQUIPPED_GEAR = 1    ## {0,1)} {1: will use unequipped gear only;  0: uses equipped gear that is not locked}
-KEEP_CURR_EQUIP = 0      ## Keeps any currently equipped gear on the hero
+KEEP_CURR_GEAR = 0      ## Keeps any currently equipped gear on the hero
 
 ## HERO CRITERIA
 MIN_LEVEL = 50          ## Default Hero level of either 50 or 60 for stat calculation
 ## STAT SELECTION
-GEAR_LVL = 12         ## Enhance gear to minimum level for stat selection/optimization
+GEAR_ENHANCE = 12         ## Enhance gear to minimum level for stat selection/optimization
 FLAT_SUB = 0.8          ## Weight flat stat values in substats {range 0.0-1.0, default:0.8}
 FLAT_MAIN = 0.5         ## Weight value attributed to [Necklace, Ring, Boots] with flat main stats {range 0.0-1.0, default:0.5}
     ## Note, although users typically prefer scaled % stats to flat stats, Epic Seven has balanced flat stats to be quite useful for many heroes.

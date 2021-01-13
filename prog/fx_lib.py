@@ -25,14 +25,16 @@ def verify_setup():
     print("Checking program configuration")
     if st.MANUAL_SELECTION != 1:  print("Automated optimization is set, all heroes will run in order without user input to select gear")
     if st.MIN_LEVEL != 60:  st.MIN_LEVEL = 50
-    if ~(isinstance(st.GEAR_LVL, int) & (0<=st.GEAR_LVL<=15)): st.GEAR_LVL = 12
-    if ~(0<=st.FLAT_SUB<=1):
+    if ~(isinstance(st.GEAR_ENHANCE, int)): st.GEAR_ENHANCE = 12
+    elif (st.GEAR_ENHANCE < 0) | (st.GEAR_ENHANCE > 15): st.GEAR_ENHANCE = 12
+    if (st.FLAT_SUB>1)|(st.FLAT_SUB<0):
+        print(type(st.FLAT_SUB))
         st.FLAT_SUB = 0.8
         print("Flat sub weighting is outside limits, set to default of 80%")
-    if ~(0<=st.FLAT_MAIN<=1):
+    if (st.FLAT_MAIN>1)|(st.FLAT_MAIN<0):
         st.FLAT_MAIN = 0.5
         print("Flat main stat weighting (Neck,Ring,Boot) is outside limits, set to default of 50%")
-    if st.KEEP_CURR_EQUIP == 1:  print("Gear currently equipped on the hero will be kept")
+    if st.KEEP_CURR_GEAR == 1:  print("Gear currently equipped on the hero will be kept")
     else:  print("Gear currently equipped on your heroes may be replaced during optimization")
     return
 
@@ -80,14 +82,19 @@ def verify_main_stats(gear_lvl, enhance, main_type, main_val, gear_type):
     return main_error*10
 
 def hero_json_to_df(chars, data):
-    df = pd.DataFrame( chars , columns = ['Name'] )
+    char_df = pd.read_csv('../inp/character_data.csv')
+    char_list = np.sort(char_df['Character'].unique())
+    print("Missing hero stats in source file for:",[x for x in chars if x not in char_list])
+    df = pd.DataFrame( char_list , columns = ['Name'] )
     df2 = pd.DataFrame(data['heroes'])
     df = pd.merge(df,df2[['Name','Lvl','BonusStats']],how='left',on=['Name'])
     df['Lvl'] = df['Lvl'].fillna(st.MIN_LEVEL)
     df['Lvl'] = df['Lvl'].clip(lower=st.MIN_LEVEL)
-    char_df = pd.read_csv('../inp/character_data.csv')
     df = df.merge(char_df, how='left', left_on = ['Name','Lvl'], right_on = ['Character','Level'])
-    return df
+    if len(df['Character'][df['Atk'].isnull()]) > 0:
+        print("Error: Character data missing from source file", df['Name'][df['Atk'].isnull()].values)
+        exit()
+    return df, char_list
 
 def item_json_to_df(data):
     df = pd.DataFrame(data['items'])
@@ -160,7 +167,7 @@ def set_combo(item_df, hero_name, l4, l2):
     if st.NO_EQUIPPED_GEAR == 1:
         temp_df = temp_df[ (temp_df.hero == '') | (temp_df.hero.isnull()) | (temp_df.hero == hero_name) ]
     temp_df.sort_values(by = ['rating'], ascending = False, inplace=True)
-    if st.KEEP_CURR_EQUIP == 1:
+    if st.KEEP_CURR_GEAR == 1:
         temp_slots = temp_df[(temp_df.hero == hero_name)].Type.values
         temp_df = temp_df[(~temp_df.Type.isin(temp_slots)) | (temp_df.hero == hero_name)]
         temp_df = temp_df.groupby('slot').head(st.GEAR_LIMIT).reset_index(drop=True)
@@ -279,7 +286,7 @@ def get_set_bonus(df, item_df):
     return df
 
 def enhance_mult(x):
-    y = st.GEAR_LVL
+    y = st.GEAR_ENHANCE
     z = np.where( (x < y) , grt.gear_scaling[y]/x.map(grt.gear_scaling) , 1 )
     return z
 

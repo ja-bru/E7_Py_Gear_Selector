@@ -24,25 +24,18 @@ fx.verify_setup()
 # ##### HEROES
 hero_order = target_stats['Hero_Order']
 df_hero = fx.hero_json_to_df(hero_order, data)
-if len(df_hero['Character'][df_hero['Atk'].isnull()]) > 0:
-    print("Error: Character data missing from source file", df_hero['Name'][df_hero['Atk'].isnull()].values)
-    exit()
+##lock gear on user specified heroes
+lock_gear = target_stats['Lock_Gear']
+
+if st.NO_EQUIPPED_GEAR == 1:
+    print("No equipped gear will be included in optimization.")
+else:
+    print("Gear on the following heroes is locked and cannot be stolen from another hero.", lock_gear)
+print("Gear will be unlocked if new gear is equipped on that hero")
 
 ##gear combination set up
 import set_combo as sc
-
-print("")
-if st.NO_EQUIPPED_GEAR == 1:
-    print("No equipped gear will be included in optimization.  Pieces of gear: ", len(sc.df_items[(sc.df_items.hero == np.nan) | (sc.df_items.hero == '')]) )
-elif len(target_stats['Lock_Gear']) > 0:
-    print("Gear equipped on the following heroes is locked and will not be included in optimization: ", target_stats['Lock_Gear'])
-else:
-    print("All gear will be used for optimization.", len(sc.df_items) )
-
-##lock gear on user specified heroes
-lock_gear = target_stats['Lock_Gear']
-sc.df_items['reco'] = np.where( sc.df_items['hero'].isin(lock_gear) , sc.df_items['hero'], sc.df_items['reco'] )
-sc.df_items['start_loc'] = sc.df_items['hero']
+sc.startup_message(lock_gear)
 
 print("The following heroes will run: ", hero_order)
 print("")
@@ -51,22 +44,24 @@ for j in range(0,len(hero_order)):
     char = hero_order[j]
     print("")
     print("Start hero: ", char, " // Level ", df_hero[df_hero.Name == char]['Lvl'].values , "  //  ", datetime.now())
-    if char in target_stats: char2 = char
-    elif char in target_stats["Type"]: char2 = target_stats['Type'][char]
-    else: char2 = 'General'
+    if char in target_stats: build = char
+    elif char in target_stats["Type"]: build = target_stats['Type'][char]
+    else: build = 'General'
 
-    print("Build type: ", char2, "Final Stat Priority: ", target_stats[char2]['Prio'])
+    hero_target = target_stats[build]
+    print("Build type: ", build, "Final Stat Priority: ", hero_target['Prio'])
 
     ##what sets to use
-    input_sets = target_stats[char2]['input_sets']
-    exclude_sets = target_stats[char2]['exclude_sets']
+    input_sets = hero_target['input_sets']
+    exclude_sets = hero_target['exclude_sets']
     include_sets = fx.gen_input_sets(input_sets, exclude_sets)
     print("The following sets are included in gear optimization", include_sets)
+    hero_target['include_sets'] = include_sets
 
     run_counter = run_pass = 0
     while (run_pass < 1)&(run_counter < 1):
         gear_comb_dict = fx.set_combo(sc.df_items[(sc.df_items.set.isin(include_sets))|(sc.df_items.hero==char)], char, sc.l4, sc.l2)  ## Output gear_comb_dict[ [set_nm] , [type] , [ID] ]
-        sc_output = sc.set_combination_iterate(gear_comb_dict, fx.set_4[fx.set_4.Set_Nm.isin(include_sets)].Set_Nm.values , fx.set_2[fx.set_2.Set_Nm.isin(include_sets)].Set_Nm.values, only4_flag = 0)
+        sc_output = sc.set_combination_iterate(gear_comb_dict, fx.set_4[fx.set_4.Set_Nm.isin(include_sets)].Set_Nm.values , fx.set_2[fx.set_2.Set_Nm.isin(include_sets)].Set_Nm.values, FORCE_4SET = 0)
         print('Progress: Step 1/4 Complete.  Number of combinations found', len(sc_output) , "   ", datetime.now())
         if len(sc_output) == 0:
             print("No combinations were found for this hero. To skip this hero and begin the next here, enter [Skip]. ")
@@ -118,7 +113,7 @@ for j in range(0,len(hero_order)):
 
     ### final stats for each combination
     output = fx.get_combo_stats(sc_df, df_hero, fx.mainst_sum(sc_df, sc.df_items), fx.subst_sum(sc_df, sc.df_items), \
-                                fx.set_sum(sc_df), fx.bonus_eqp_sum(df_hero[df_hero.Name == char]), char, target_stats[char2])
+                                fx.set_sum(sc_df), fx.bonus_eqp_sum(df_hero[df_hero.Name == char]), char, hero_target)
     print('Progress: Step 2/4 Complete.  Number of unique combinations for optimization', len(output) , "   ", datetime.now())
 
     if hero_with_gear == 1:
@@ -131,26 +126,28 @@ for j in range(0,len(hero_order)):
     ## regular process
     output2 = output.copy()
     for stat in fx.set_df[fx.set_df.Bonus_Stat != 'NA'].Bonus_Stat.values:
-        output2.drop( output2[(output2[stat]).astype(int) < target_stats[char2][stat]['Min']].index, inplace=True)
-        output2.drop( output2[(output2[stat]).astype(int) > target_stats[char2][stat]['Max']].index, inplace=True)
+        output2.drop( output2[(output2[stat]).astype(int) < hero_target[stat]['Min']].index, inplace=True)
+        output2.drop( output2[(output2[stat]).astype(int) > hero_target[stat]['Max']].index, inplace=True)
     print("Progress: Step 3/4 Complete.  The number of combinations available with stats in specified range is: ",len(output2))
     if len(output2)==0:
-        output2 = output
+        output2 = output.copy()
         print("Since no combinations meet criteria, best alternative combinations will be shown based on desired stat weighting.")
 
     ## get top options for key stats
     if st.MANUAL_SELECTION == 1:
         choice_df = choice_df.append(output.iloc[:3,:])
-        for STAT in np.unique(target_stats[char2]['Prio']):
-            choice_df = choice_df.append(output.sort_values(by = STAT, ascending = False ).iloc[:3,:] )
         choice_df = choice_df.append(output2.sort_values(by = ['WW'], ascending = False ).iloc[:3,:] )
-        for STAT in np.unique(target_stats[char2]['Prio']):
-            choice_df = choice_df.append(output2.sort_values(by = STAT, ascending = False ).iloc[:3,:] )
-
-    for i in range(0,len(target_stats[char2]['Prio'])):
-        target = target_stats[char2]['Prio'][i]
-        cut_off = output2[target].quantile(0.9)
-        output2 = output2[ output2[target] >= cut_off ]
+        try:
+            for STAT in np.unique(hero_target['Prio']):
+                choice_df = choice_df.append(output.sort_values(by = STAT, ascending = False ).iloc[:3,:] )
+                choice_df = choice_df.append(output2.sort_values(by = STAT, ascending = False ).iloc[:3,:] )
+        except: pass
+    try:
+        for i in range(0,len(hero_target['Prio'])):
+            target = hero_target['Prio'][i]
+            cut_off = output2[target].quantile(0.9)
+            output2 = output2[ output2[target] >= cut_off ]
+    except: pass
     print("combinations after prio sortings ", len(output2) )
 
     if st.MANUAL_SELECTION == 1:
@@ -158,11 +155,13 @@ for j in range(0,len(hero_order)):
         choice_df = choice_df.append(output2[(output2.Set_1.isin(['Unity','Immunity','Penetration'])) | (output2.Set_2.isin(['Unity','Immunity'])) | \
                 (output2.Set_3.isin(['Unity','Immunity']))].sort_values(by = ['WW'], ascending = False ).iloc[:3,:] )
         choice_df = choice_df.append(output2[(output2.Set_1.isin(['Counter','Lifesteal','Rage','Injury','Revenge']))].sort_values(by = ['WW'], ascending = False ).iloc[:3,:] )
-        for STAT in np.unique(target_stats[char2]['Prio']):
-            choice_df = choice_df.append(output2.sort_values(by = STAT, ascending = False ).iloc[:3,:] )
+        try:
+            for STAT in np.unique(hero_target['Prio']):
+                choice_df = choice_df.append(output2.sort_values(by = STAT, ascending = False ).iloc[:3,:] )
+        except: pass
         choice_df = choice_df.drop(axis = 1, columns = ['gear_list','Gear']).drop_duplicates()
         print("Enter the index value (the top number of the stat output) for the stats you would like to assign to your hero:")
-        screen_options = choice_df[['Set_1','Set_2','Set_3','WW','ATK','HP','DEF','SPD','CRIT','CDMG','EFF','RES','Dmg_Rating','EHP']].transpose()
+        screen_options = choice_df[['Set_1','Set_2','Set_3','WW','ATK','HP','DEF','SPD','CRIT','CDMG','EFF','RES','Dmg_Rating','EHP','Complete']].transpose()
         print(screen_options)
         row_idx = int(input(""" Please enter index corresponding with gear selection """ ))
         output['Complete'].loc[row_idx] = 'RECO'

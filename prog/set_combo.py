@@ -6,9 +6,45 @@ import itertools
 import pickle
 import yaml
 import setup as st
+import fx_lib as fx
 
 df_items = pd.read_pickle('../outp/equip_potential.pkl')
 df_items['reco'] = ''
+df_items['start_loc'] = df_items['hero']
+
+def startup_message(lock_gear):
+    df_items['reco'] = np.where( df_items['hero'].isin(lock_gear) , df_items['hero'], df_items['reco'] )
+    if st.NO_EQUIPPED_GEAR == 1: print("Unequipped gear will be used. # of items: ", len(df_items[(df_items.hero == np.nan) | (df_items.hero == '')]) )
+    elif len(lock_gear) > 0:  print("Unequipped and unlocked gear will be used.  # of items", len(df_items[df_items.reco == '']) )
+    else:  print("All gear will be used.  # of items:", len(df_items) )
+    return
+
+def start_hero(char, target_stats):
+    print("Hero: ", char) #, "Level ", df_hero[df_hero.Name == char]['Lvl'].values)
+    if char in target_stats:
+        build = char
+        print("Customer character build")
+    elif char in target_stats["Type"]:
+        build = target_stats['Type'][char]
+        print("Character assigned template build:", build)
+    else:
+        print("No build assigned to this character")
+        build = 'General'
+    print("Build type: ", build, "Stat priority: ", target_stats[build]['Prio'])
+
+    input_sets = target_stats[build]['input_sets']
+    exclude_sets = target_stats[build]['exclude_sets']
+    include_sets = fx.gen_input_sets(input_sets, exclude_sets)
+    print("Sets to include for this character:", include_sets)
+    target_stats[build]['include_sets'] = include_sets.tolist()
+    if any(item in include_sets for item in fx.set_4.Set_Nm.values) == True:
+        FORCE_4SET = 1
+        print("Looking for combinations using a four piece set only.")
+        print("To include combinations of three 2 gear sets, set FORCE_4SET = 0")
+    else:
+        FORCE_4SET = 0
+        print("Accepts all set combinations (4set+2set or 3x2set)")
+    return FORCE_4SET, char, target_stats[build]
 
 def l4comb(l4,l2):
     l4_comb = []
@@ -60,7 +96,7 @@ l2_comb = l2comb(l2)
 
 # ### ALL GEAR COMBINATIONS WHERE UNBROKEN
 
-def set_combination_iterate(gear_comb_dict, set4_list, set2_list, only4_flag):
+def set_combination_iterate(gear_comb_dict, set4_list, set2_list, FORCE_4SET):
     ##df columns
     Itr_Sets = []
     Set_1 = []
@@ -86,7 +122,7 @@ def set_combination_iterate(gear_comb_dict, set4_list, set2_list, only4_flag):
                 Set_3.extend([None]*len(itr))
                 Gear.extend(itr)
                 Complete.extend([1]*len(itr))
-    if only4_flag != 1:
+    if FORCE_4SET != 1:
         for set_nm in itertools.combinations(set2_list, 3):
             for a in range(0,len(l2_comb)):
                 code1 = l2_comb[a][0]
