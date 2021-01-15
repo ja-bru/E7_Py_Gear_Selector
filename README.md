@@ -1,4 +1,4 @@
-# E7_Py_Gear_Selector
+# Equipment Selection and Hero Optimization for Epic Seven using Python / Jupyter Notebook
 
 ### About
 
