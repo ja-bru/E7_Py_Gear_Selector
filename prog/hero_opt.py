@@ -14,35 +14,28 @@ import json
 import yaml
 with open(r'../inp/character_inputs.yaml') as file:
     target_stats = yaml.load(file, Loader=yaml.FullLoader)
-
 with open('../inp/master_data.json') as json_file:
     data = json.load(json_file)
+##gear combination set up
+import set_combo as sc
+import customer_ui_fx_jn as ui
 
 # CATCH INPUT ERRORS
 fx.verify_setup()
 
 # ##### HEROES
-hero_order = target_stats['Hero_Order']
-df_hero = fx.hero_json_to_df(hero_order, data)
+hero_order = sc.startup_msg1(target_stats)
 ##lock gear on user specified heroes
 lock_gear = target_stats['Lock_Gear']
+df_hero, char_list = fx.hero_json_to_df(hero_order, data)
+sc.startup_msg2(lock_gear)
 
-if st.NO_EQUIPPED_GEAR == 1:
-    print("No equipped gear will be included in optimization.")
-else:
-    print("Gear on the following heroes is locked and cannot be stolen from another hero.", lock_gear)
-print("Gear will be unlocked if new gear is equipped on that hero")
-
-##gear combination set up
-import set_combo as sc
-sc.startup_message(lock_gear)
-
-print("The following heroes will run: ", hero_order)
-print("")
 ###input for loop
 for j in range(0,len(hero_order)):
     char = hero_order[j]
-    print("")
+    print(".")
+    print(".")
+    print(".")
     print("Start hero: ", char, " // Level ", df_hero[df_hero.Name == char]['Lvl'].values , "  //  ", datetime.now())
     if char in target_stats: build = char
     elif char in target_stats["Type"]: build = target_stats['Type'][char]
@@ -70,7 +63,7 @@ for j in range(0,len(hero_order)):
             user_input = input("""Please enter one of [Skip, Retry, Exit] """ )
             input_list = ['Skip','Retry','Exit']
             if user_input not in input_list:
-                user_input = input("""Please enter one of [Skip, Retry, Exit] """ )
+                user_input = ui.readInput("Please enter one of [Skip, Retry, Exit]","Retry" )
                 if user_input not in input_list: user_input = 'Retry'
             if user_input == 'Retry':
                 if run_counter == 1:
@@ -90,108 +83,26 @@ for j in range(0,len(hero_order)):
     except:
         continue
 
-    sc_df['gear_list'] = sc_df.apply(lambda row: fx.gear_split(row) , axis=1)
-    sc_df[['0','1','2','3','4','5']] = pd.DataFrame(sc_df.gear_list.values.tolist(), index= sc_df.index)
-    sc_df = sc_df.drop_duplicates(['0','1','2','3','4','5'])
-
-    ### add current gear setting stats
-    current_gear = pd.DataFrame(columns = ['Set_1', 'Set_2', 'Set_3', 'Complete', 'Gear', 'gear_list', '0', '1', '2', '3', '4', '5' ], index = ['0'])
-    try:
-        nix=0
-        for gid in range(0,6):
-            current_gear[str(gid)] = sc.df_items[(sc.df_items.hero == char) & (sc.df_items.Type == gid)][['id']].values
-            val = sc.df_items[(sc.df_items.hero == char) & (sc.df_items.Type == gid)][['reco']].values
-            if (val > '') & (val!=char): nix = 1
-        current_gear = fx.get_set_bonus(current_gear, sc.df_items)
-        if nix==1: current_gear['Complete'] = 'PREVIOUS'
-        elif nix==0: current_gear['Complete'] = 'CURRENT'
-        sc_df = sc_df.append(current_gear)
-        sc_df = sc_df.reset_index()
-        hero_with_gear = 1
-    except:
-        hero_with_gear = 0
-
-    ### final stats for each combination
-    output = fx.get_combo_stats(sc_df, df_hero, fx.mainst_sum(sc_df, sc.df_items), fx.subst_sum(sc_df, sc.df_items), \
-                                fx.set_sum(sc_df), fx.bonus_eqp_sum(df_hero[df_hero.Name == char]), char, hero_target)
-    print('Progress: Step 2/4 Complete.  Number of unique combinations for optimization', len(output) , "   ", datetime.now())
-
-    if hero_with_gear == 1:
-        choice_df = output.iloc[-1:,:].copy()
-        output = output.sort_values(by = ['WW'], ascending = False )  ## faster than inplace
-    else:
-        output = output.sort_values(by = ['WW'], ascending = False )  ## faster than inplace
-        choice_df = output.iloc[:1,:].copy()
-
-    ## regular process
-    output2 = output.copy()
-    for stat in fx.set_df[fx.set_df.Bonus_Stat != 'NA'].Bonus_Stat.values:
-        output2.drop( output2[(output2[stat]).astype(int) < hero_target[stat]['Min']].index, inplace=True)
-        output2.drop( output2[(output2[stat]).astype(int) > hero_target[stat]['Max']].index, inplace=True)
-    print("Progress: Step 3/4 Complete.  The number of combinations available with stats in specified range is: ",len(output2))
-    if len(output2)==0:
-        output2 = output.copy()
-        print("Since no combinations meet criteria, best alternative combinations will be shown based on desired stat weighting.")
-
-    ## get top options for key stats
+    sc_df, hero_with_gear = sc.final_gear_combos(sc_output, char)
+    odf = fx.get_combo_stats(sc_df, df_hero, fx.mainst_sum(sc_df, sc.df_items), fx.subst_sum(sc_df, sc.df_items), \
+                    fx.set_sum(sc_df), fx.bonus_eqp_sum(df_hero[df_hero.Name == char]), char, hero_target)
+    idx_reco, choice_df = sc.run_stat_reco(odf, hero_with_gear, hero_target)
     if st.MANUAL_SELECTION == 1:
-        choice_df = choice_df.append(output.iloc[:3,:])
-        choice_df = choice_df.append(output2.sort_values(by = ['WW'], ascending = False ).iloc[:3,:] )
-        try:
-            for STAT in np.unique(hero_target['Prio']):
-                choice_df = choice_df.append(output.sort_values(by = STAT, ascending = False ).iloc[:3,:] )
-                choice_df = choice_df.append(output2.sort_values(by = STAT, ascending = False ).iloc[:3,:] )
-        except: pass
-    try:
-        for i in range(0,len(hero_target['Prio'])):
-            target = hero_target['Prio'][i]
-            cut_off = output2[target].quantile(0.9)
-            output2 = output2[ output2[target] >= cut_off ]
-    except: pass
-    print("combinations after prio sortings ", len(output2) )
-
-    if st.MANUAL_SELECTION == 1:
-        choice_df = choice_df.append(output2.sort_values(by = ['WW'], ascending = False ).iloc[:3,:] )
-        choice_df = choice_df.append(output2[(output2.Set_1.isin(['Unity','Immunity','Penetration'])) | (output2.Set_2.isin(['Unity','Immunity'])) | \
-                (output2.Set_3.isin(['Unity','Immunity']))].sort_values(by = ['WW'], ascending = False ).iloc[:3,:] )
-        choice_df = choice_df.append(output2[(output2.Set_1.isin(['Counter','Lifesteal','Rage','Injury','Revenge']))].sort_values(by = ['WW'], ascending = False ).iloc[:3,:] )
-        try:
-            for STAT in np.unique(hero_target['Prio']):
-                choice_df = choice_df.append(output2.sort_values(by = STAT, ascending = False ).iloc[:3,:] )
-        except: pass
-        choice_df = choice_df.drop(axis = 1, columns = ['gear_list','Gear']).drop_duplicates()
         print("Enter the index value (the top number of the stat output) for the stats you would like to assign to your hero:")
         screen_options = choice_df[['Set_1','Set_2','Set_3','WW','ATK','HP','DEF','SPD','CRIT','CDMG','EFF','RES','Dmg_Rating','EHP','Complete']].transpose()
         print(screen_options)
         row_idx = int(input(""" Please enter index corresponding with gear selection """ ))
-        output['Complete'].loc[row_idx] = 'RECO'
-        gear_selected = output.loc[row_idx]
-    if st.MANUAL_SELECTION != 1:
-        output2['Complete'].iloc[0,:] = 'RECO'
-        gear_selected = output2.iloc[0,:]
-        choice_df = choice_df.append(gear_selected)
-    if hero_with_gear == 1:  print("No starting gear was equipped on this hero")
-    print(choice_df[choice_df.Complete.isin(['CURRENT','PREVIOUS','RECO'])][['Complete','Set_1','Set_2','Set_3','WW','ATK','HP','DEF','SPD','CRIT','CDMG','EFF','RES','Dmg_Rating','EHP']])
-    reco_list = gear_selected['gear_list']
-    try: reco_df.append(gear_selected)
-    except: reco_df = pd.DataFrame(gear_selected)
-    sc.df_items['reco'] = np.where( sc.df_items.id.isin(reco_list) , char, sc.df_items['reco'])
-
+        idx_reco = row_idx
+    gear_selected = odf.loc[idx_reco]
+    odf['Complete'].loc[idx_reco] = 'RECO'
+    sc.df_items = ui.save_hero(sc.df_items, odf.loc[idx_reco], char)
     print("Progress: Step 4/4 Complete.  Recommended gear selected.  Completed hero: ", char)
+    if hero_with_gear == 1:  print("Hero began optimization with gear equipped")
+    print(odf[odf.Complete.isin(['CURRENT','PREVIOUS','RECO'])][['Complete','Set_1','Set_2','Set_3','WW','ATK','HP','DEF','SPD','CRIT','CDMG','EFF','RES','Dmg_Rating','EHP']])
 
-    sc.df_items['hero'] = np.where((sc.df_items.hero == char)&(sc.df_items.hero != sc.df_items.reco),'',sc.df_items.hero) ##unlocks gear for next hero
-
-    sc.df_items = sc.df_items.sort_values(by = ['reco','Type','hero','efficiency','enhance'])
-    sc.df_items.to_pickle('../outp/upd_items.pkl') ##saves interim results in case of error
+    reco_list = gear_selected['gear_list']
+    sc.df_items['reco'] = np.where( sc.df_items.id.isin(reco_list) , char, sc.df_items['reco'])
 ##end for loop
-
+ui.save_final_data(sc.df_items)
 print("Saving final results.  Results can be viewed in gear_reco.csv or upd_items.json.")
-print("If you are happy with the results, you can move gear over in Erpic Seven and update the items section in master_data.json")
-
-sc.df_items[~sc.df_items.reco.isnull()][['start_loc','reco','slot','set','level','rarity','enhance','mainStat','subStat1','subStat2','subStat3','subStat4','efficiency','rating','Type']].to_csv('../reco/gear_reco.csv')
-sc.df_items['hero'] = np.where( ~sc.df_items.reco.isnull(), sc.df_items['reco'],sc.df_items['hero'])
-sc.df_items.to_pickle('../outp/equip_potential.pkl')
-
-sc.df_items = sc.df_items.sort_values(by = ['hero','Type','efficiency','enhance'])
-export2 = sc.df_items[['efficiency','hero','enhance','slot','level','set','rarity','mainStat','subStat1','subStat2','subStat3','subStat4','id','p_id','locked']].to_dict('records')
-with open('../outp/upd_items.json', 'w') as fp: json.dump(export2, fp)
+print("If you are happy with the results, you can move gear over in Epic Seven and update the items section in master_data.json")
