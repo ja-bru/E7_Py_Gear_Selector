@@ -2,115 +2,106 @@
 
 import pandas as pd
 import numpy as np
+import math
 import itertools
 import setup as st
 from datetime import datetime
+import gear_ref_table as grt
 
-# ### LOOKUP
+# ### PULL IN FIXED LOOKUP TABLES FOR GEAR
 
-d = [
-    ['ATK%', 'AtkP',  0,  0.13,  0.09,  0.05,  0.11111,  0.08,  0.07,  0.06],
-    ['DEF%', 'DefP',  7,  0.13,  0.09,  0.05,  0.11111,  0.08,  0.07,  0.06],
-    ['HP%',  'HPP',  5,  0.13,  0.09,  0.05,  0.11111,  0.08,  0.07,  0.06],
-    ['EFF',  'Eff',  9,  0.13,  0.09,  0.05,  0.11111,  0.08,  0.07,  0.06],
-    ['RES',  'Res',  10,  0.13,  0.09,  0.05,  0.11111,  0.08,  0.07,  0.06],
-    ['CDMG', 'CDmg',  4,  0.14,  0.08,  0.04,  0.125,  0.07,  0.06,  0.05],
-    ['CRIT', 'CChance',  3,  0.12,  0.06,  0.04,  0.166667,  0.05,  0.04,  0.04],
-    ['SPD',  'Spd',  2,  9,  5,  2,  0.2,  4,  4,  3],
-    ['DEF',  'Def',  8,  62,  40,  24,  0.025,  35,  30,  30],
-    ['ATK',  'Atk',  1,  103,  50,  30,  0.02222,  40,  35,  35],
-    ['HP',   'HP',  6,  540,  225,  140,  0.005556,  155,  145,  140]
-]
-cols = ['stat',  'stat_in','code','main_t7','max_t7','min_t7','multiplier','max_t6','max_t5','max_t4']
-gear_rating_lookup = pd.DataFrame(data = d, columns = cols)
-gear_rating_lookup.sort_values(by = ['code'], inplace=True)
-gear_rating_lookup.reset_index(inplace=True)
+gear_rating_lookup = grt.gear_rating_lookup.copy()
 grl = gear_rating_lookup.to_dict()
-
 gear_tier = pd.read_csv("../inp/gear_tiers.csv")
-
-gear_type = [
-    ['Type',0,'weapon'],
-    ['Type',1,'helm'],
-    ['Type',2,'armor'],
-    ['Type',3,'necklace'],
-    ['Type',4,'ring'],
-    ['Type',5,'boots']
-    ]
-gear_set = [
-    ['Set',0,'Speed',25,'SPD',4],
-    ['Set',1,'Hit',20,'EFF',2],
-    ['Set',2,'Critical',12,'CRIT',2],
-    ['Set',3,'Defense',15,'DEF',2],
-    ['Set',4,'Health',15,'HP',2],
-    ['Set',5,'Attack',35,'ATK',4],
-    ['Set',6,'Counter',20,'NA',4],
-    ['Set',7,'Lifesteal',0,'NA',4],
-    ['Set',8,'Destruction',40,'CDMG',4],
-    ['Set',9,'Resist',20,'RES',2],
-    ['Set',10,'Rage',30,'NA',4],
-    ['Set',11,'Immunity',0,'NA',2],
-    ['Set',12,'Unity',4,'NA',2],
-    ['Set',13,'Revenge',0,'NA',4],
-    ['Set',14,'Injury',0,'NA',4],
-    ['Set',15,'Penetration',0,'NA',2]
-    ]
-type_df = pd.DataFrame(data = gear_type, columns = ['Ind','Type','Type_Nm'])
-set_df = pd.DataFrame(data = gear_set, columns = ['Ind','Set','Set_Nm','Bonus','Bonus_Stat','Set_Lg'])
+type_df = grt.type_df.copy()
+set_df = grt.set_df.copy()
 set_4 = set_df[['Set','Set_Nm','Set_Lg']][set_df.Set_Lg == 4]
-set_A = set_df[['Set','Set_Nm','Set_Lg']]
 set_2 = set_df[['Set','Set_Nm','Set_Lg']][set_df.Set_Lg == 2]
-
-gear_scaling = {0: 1, 1: 1.2, 2: 1.4, 3: 1.6, 4: 1.8, 5: 2.0, 6: 2.2, \
-                7: 2.4, 8: 2.6, 9: 2.8, 10: 3.0, 11: 3.3, 12: 3.6, 13: 3.9, 14: 4.25, 15: 5.0}
 
 subs_cols = ['subStat1','subStat2','subStat3','subStat4']
 
-r_map = {'Epic':0,'Heroic':1,'Rare':2}
-t_map = {'Weapon':0,'Helmet':1,'Armor':2,'Necklace':3,'Ring':4,'Boots':5}
-
-s_map = {}
-for i in range(0,11):
-    a = grl['stat'][i]
-    b = grl['stat_in'][i]
-    s_map[b] = a
-
 # ### FUNCTIONS
-def hero_json_to_df(chars, data):
-    df = pd.DataFrame( chars , columns = ['Name'] )
-    df2 = pd.DataFrame(data['heroes'])
-    df = pd.merge(df,df2[['Name','Lvl','Artifact']],how='left',on=['Name'])
-    df['Lvl'] = df['Lvl'].fillna(50)
-    df['Lvl'] = df['Lvl'].clip(lower=50)
-    char_df = pd.read_csv('../inp/character_data.csv')
-    df = df.merge(char_df, how='left', left_on = ['Name','Lvl'], right_on = ['Character','Level'])
-    return df
+def verify_setup():
+    print("Checking program configuration")
+    if st.MANUAL_SELECTION != 1:  print("Automated optimization is set, all heroes will run in order without user input to select gear")
+    if st.MIN_LEVEL != 60:  st.MIN_LEVEL = 50
+    if ~(isinstance(st.GEAR_ENHANCE, int)): st.GEAR_ENHANCE = 12
+    elif (st.GEAR_ENHANCE < 0) | (st.GEAR_ENHANCE > 15): st.GEAR_ENHANCE = 12
+    if (st.FLAT_SUB>1)|(st.FLAT_SUB<0):
+        print(type(st.FLAT_SUB))
+        st.FLAT_SUB = 0.8
+        print("Flat sub weighting is outside limits, set to default of 80%")
+    if (st.FLAT_MAIN>1)|(st.FLAT_MAIN<0):
+        st.FLAT_MAIN = 0.5
+        print("Flat main stat weighting (Neck,Ring,Boot) is outside limits, set to default of 50%")
+    if st.KEEP_CURR_GEAR == 1:  print("Gear currently equipped on the hero will be kept")
+    else:  print("Gear currently equipped on your heroes may be replaced during optimization")
+    return
 
-def hero_json_to_df_v2(data):
-    df = pd.DataFrame(data['heroes'])
-    for j in range (0,6):
-        gear = []
-        for i in df.index:
-            if df['Gear'][i]:
-                if df['Gear'][i][j]:
-                    dc = df['Gear'][i][j]
-                    gear.append(dc["ID"])
-                else: gear.append(None)
-            else: gear.append(None)
-        col_name = ('gear_id_'+str(j))
-        df[col_name] = gear
-    df['Lvl'] = df['Lvl'].clip(lower=50)
+def verify_item_input(df):
+    check_error = 0
+    gear_lvl = df['level']
+    enhance = df['enhance']
+    tier = gear_tier[gear_tier.Level == gear_lvl]['Tier'].values[0]
+    ##check main stat and enhance level
+    main_type = df['mainStat'][0]
+    main_val = df['mainStat'][1]
+    gear_type = df['Type']
+    check_error += verify_main_stats(gear_lvl, enhance, main_type, main_val, gear_type)
+    ##check substats
+    grt_col = "max_" + tier.lower()
+    pwrup = math.floor( enhance / 3 )
+    tot_pwr = 0
+    for stat in gear_rating_lookup.stat.values:
+        sub_limit = gear_rating_lookup[gear_rating_lookup.stat == stat][grt_col].values
+        if stat in (['CRIT','CDMG','HP%','ATK%','DEF%','EFF','RES']):
+            sub_limit = sub_limit * 100
+        val = df[stat]
+        tot_pwr += math.ceil(val / sub_limit)
+        sub_pred = (1+pwrup) * sub_limit
+        if sub_pred < val:  check_error+=1
+        if (val > 0) & (gear_rating_lookup[gear_rating_lookup.stat == stat]['stat_in'].values == main_type):  check_error+=1
+    if (4 - df['grade'] + pwrup) < tot_pwr:
+        check_error += 100
+    return check_error
+def verify_main_stats(gear_lvl, enhance, main_type, main_val, gear_type):
+    main_error = 0
+    ##main type
+    if (gear_type == 0) & (main_type != 'Atk'): main_error = 1
+    if (gear_type == 1) & (main_type != 'HP'): main_error = 1
+    if (gear_type == 2) & (main_type != 'Def'): main_error = 1
+    if (gear_type == 3) & (main_type in(['Eff','Res','Spd'])): main_error = 1
+    if (gear_type == 4) & (main_type in(['CChance','CDmg','Spd'])): main_error = 1
+    if (gear_type == 5) & (main_type in(['CChance','CDmg','Eff','Res'])): main_error = 1
+    ##main stat
+    base_stat = gear_tier[(gear_tier.Level == gear_lvl)][main_type].values[0]
+    projected_stat = base_stat * grt.gear_scaling[enhance]
+    if (main_val > projected_stat*1.01) | (main_val < projected_stat * 0.88):
+        main_error += 1
+    return main_error*10
+
+def hero_json_to_df(chars, data):
     char_df = pd.read_csv('../inp/character_data.csv')
+    char_list = np.sort(char_df['Character'].unique())
+    print("Missing hero stats in source file for:",[x for x in chars if x not in char_list])
+    df = pd.DataFrame( char_list , columns = ['Name'] )
+    df2 = pd.DataFrame(data['heroes'])
+    df = pd.merge(df,df2[['Name','Lvl','BonusStats']],how='left',on=['Name'])
+    df['Lvl'] = df['Lvl'].fillna(st.MIN_LEVEL)
+    df['Lvl'] = df['Lvl'].clip(lower=st.MIN_LEVEL)
     df = df.merge(char_df, how='left', left_on = ['Name','Lvl'], right_on = ['Character','Level'])
-    return df
+    if len(df['Character'][df['Atk'].isnull()]) > 0:
+        print("Error: Character data missing from source file", df['Name'][df['Atk'].isnull()].values)
+        exit()
+    return df, char_list
 
 def item_json_to_df(data):
     df = pd.DataFrame(data['items'])
-    df.rename(columns={'ability':'enhance'}, inplace=True)
+    df.rename(columns={'ability':'enhance'}, inplace=True) ##added this line for anyone using compeanansi OCR tool
     df[subs_cols] = df[subs_cols].applymap(lambda x: [0,0] if x is np.nan else x)
     #df = df.apply(lambda row: ocr_cleanup(row), axis=1)
-    df['grade'] = df['rarity'].map(r_map)
-    df['Type'] = df['slot'].map(t_map)
+    df['grade'] = df['rarity'].map(grt.r_map)
+    df['Type'] = df['slot'].map(grt.t_map)
     return df
 
 def gear_stats(df):
@@ -127,15 +118,9 @@ def gear_stats(df):
         #pd.concat(df[stat] , axis=1)
     return pd.concat([df, pd.DataFrame(newcols, index=df.index)], axis=1)
 
-def ocr_cleanup(df):
-    #df['slot'] = np.where(df.slot == 'Rina', 'Ring', df['slot'] )
-    df['level'] = np.where( df['level'] < 40 , 70 , df['level'] )
-    df['enhance'] = np.where( (df['enhance'] == 7) & (df['mainStat'][1] == gear_tier[gear_tier.Level == df['level']][df['mainStat'][0]].values[0]  ) , 0 , df['enhance'] )
-    return df
-
+## Item Potential Function generates individual gear ratings and substat efficiency
 def item_potential(df):
     GR = 0
-    GR2 = 0
     spd_ind = 0
     spd_val = 0
     gear_lvl = df['level']
@@ -144,17 +129,15 @@ def item_potential(df):
     df['main_tp'] = main_type
     df['main_val'] = main_val
     main_rating = gear_tier[gear_tier.Level == gear_lvl]['X_Factor'].values[0]
-    main_rating = np.where( (df['Type'] >= 3)&(main_type in ['Atk','HP','Def']) , main_rating*0.8 , main_rating )
+    main_rating = np.where( (df['Type'] >= 3)&(main_type in ['Atk','HP','Def']) , main_rating*st.FLAT_MAIN , main_rating )
     rarity = df['grade']
     for stat in gear_rating_lookup.stat.values:
         val = df[stat]
         x = gear_rating_lookup[gear_rating_lookup.stat == stat]['multiplier'].values
         z = x[0] / 9
-        rating = val * z * np.where( stat in ['ATK','HP','DEF'] , 0.95 , 1 )
+        rating = val * z * np.where( stat in ['ATK','HP','DEF'] , st.FLAT_SUB , 1 )
         GR = GR + rating
-        GR2 = GR2 + np.where( stat in ['ATK','HP','DEF'] , rating*0.5 , rating )
     df['GR'] = GR
-    df['GR2'] = GR2
     spd_ind = np.where(df['SPD'] > 0, 1, 0)
     spd_val = df['SPD']
     enhance = df['enhance']
@@ -164,33 +147,30 @@ def item_potential(df):
     maxp = GR + pwrup/9 * np.where(gear_lvl<86,0.87,1)*np.where(gear_lvl<72,0.87,1)*np.where(gear_lvl<58,0.87,1)
     df['maxp'] = maxp
     df['spdp'] = np.where(main_type=='Spd',0,spd_potential(pwrup,rarity,spd_ind)) \
-            * np.where(gear_lvl==88, 5, np.where(gear_lvl>57,4,3) )  + spd_val
+            * np.where(gear_lvl>88, 5, np.where(gear_lvl>57,4,3) )  + spd_val
     df['rating'] = main_rating * 1.4 + (minp+maxp)/2 + np.where(main_type == 'Spd', 0.2, 0) + spd_val*0.01
-    df['efficiency2'] =  int(df['rating']*10)
     df['efficiency'] =  int(main_rating * 44 + GR * 66 + np.where(main_type == 'Spd', 2, 0) + spd_val * 0.1)
     df['max_eff'] =  int(main_rating * 44 + maxp * 66 + np.where(main_type == 'Spd', 2, 0) + spd_val * 0.1)
-    df['current_eff'] = GR * 6.6 + main_rating * gear_scaling[enhance]/5 * 4.4
-    df['current_pct'] = GR2 * 6.6 + main_rating * gear_scaling[enhance]/5 * 4.4
+    df['current_eff'] = GR * 6.6 + main_rating * grt.gear_scaling[enhance]/5 * 4.4
     return df
 
-def spd_potential(p,g,s):
-    v1 = np.where( (s==0 )& (g>0) & (p>g) , 2, 0 )
+def spd_potential(p,g,s):  ## p = power ups remaining, item rarity, if speed is currently a substat
+    v1 = np.where( (s==0)&(g>0)&(p>g) , 2, 0 )  ##returns 2 for heroic gear below enhance 9 or rare gear below enhance 6 if no speed sub currently
     v2 = np.where( s==1 , max(min(p,p-g),np.where(p>0,1,0)),0 )
     return (v1+v2)
 
 def set_combo(item_df, hero_name, l4, l2):
-
     # ### EVERY COMBINATION OF UNBROKEN SETS
     gear_comb_dict = {}
     temp_df = item_df[ (item_df.reco.isnull()) | (item_df.reco == '') | (item_df.reco == hero_name)].copy()
     if st.NO_EQUIPPED_GEAR == 1:
         temp_df = temp_df[ (temp_df.hero == '') | (temp_df.hero.isnull()) | (temp_df.hero == hero_name) ]
     temp_df.sort_values(by = ['rating'], ascending = False, inplace=True)
-    if st.USE_CURR_EQUIP == 1:
+    if st.KEEP_CURR_GEAR == 1:
         temp_slots = temp_df[(temp_df.hero == hero_name)].Type.values
         temp_df = temp_df[(~temp_df.Type.isin(temp_slots)) | (temp_df.hero == hero_name)]
         temp_df = temp_df.groupby('slot').head(st.GEAR_LIMIT).reset_index(drop=True)
-    if st.USE_CURR_EQUIP == 0:
+    else:
         temp_df_b = temp_df.groupby('slot').head(st.GEAR_LIMIT).reset_index(drop=True)
         temp_df_c = temp_df.groupby(['slot','set']).head(1).reset_index(drop=True)
         temp_df.sort_values(by = ['efficiency'], ascending = False, inplace=True)
@@ -238,7 +218,7 @@ def set_combo(item_df, hero_name, l4, l2):
     return gear_comb_dict
 
 def gear_split(df):
-    ##extract gear
+    ##extract gear ids from tuples produced in sc.set_combination_iterate
     if df.Set_3 == None:
         u,v = df.Gear
         m,n,o,p = u
@@ -252,13 +232,13 @@ def gear_split(df):
     return gear_list
 
 def gen_input_sets(include, exclude, autofill = 0):
+    ##initialize placeholder variables
     x = 0
     iv = 0
     ii = 0
-
+    ##generate list of sets to use in gear analysis based on user inputs
     if len(include) == 0:
         include = set_df[~set_df.Set_Nm.isin(exclude)]['Set_Nm'].values
-
     else:
         for set_nm in include:
             x += set_df[set_df.Set_Nm == set_nm].iloc[0]['Set_Lg']
@@ -305,8 +285,9 @@ def get_set_bonus(df, item_df):
     return df
 
 def enhance_mult(x):
-    y = np.where( (st.GEAR_12 == 1) & (x < 12) , 3.3/x.map(gear_scaling) , 1 )
-    return y
+    y = st.GEAR_ENHANCE
+    z = np.where( (x < y) , grt.gear_scaling[y]/x.map(grt.gear_scaling) , 1 )
+    return z
 
 def set_sum(df):
     # print("started function set sum:   ", datetime.now())
@@ -358,7 +339,7 @@ def mainst_sum(df, item_df):
             col2 = 'main_val_'+str(i)
             col3 = 'enhance_'+str(i)
             enh_mult = enhance_mult(mainst_df[col3])
-            mainst_df[stat] += np.where( mainst_df[col1].map(s_map) == stat, (mainst_df[col2] * enh_mult).astype(int), 0)
+            mainst_df[stat] += np.where( mainst_df[col1].map(grt.s_map) == stat, (mainst_df[col2] * enh_mult).astype(int), 0)
     drop_cols = []
     for subst in ['id','level','main_val','main_tp','enhance']:
         for suffix in ['_0','_1','_2','_3','_4','_5']:
@@ -369,14 +350,13 @@ def mainst_sum(df, item_df):
 
 def bonus_eqp_sum(hero_df):
     bonus_eqp_df = hero_df['Name'].copy()
-    hero_artifact = hero_df['Artifact'].values[0]
+    hero_bonus = hero_df['BonusStats'].values[0]
     for stat in np.unique(gear_rating_lookup.stat_in.values):
-        try: bonus_eqp_df[stat] = hero_artifact[stat]
+        try: bonus_eqp_df[stat] = hero_bonus[stat]
         except: bonus_eqp_df[stat] = 0
     return bonus_eqp_df
 
 def get_combo_stats(df, df_hero, mainst_df, subst_df, setst_df, hero_ee, char, target_stats):#, mainst_df, subst_df, setst_df):
-    print("started function get combo stats:   ", datetime.now())
     df['Char'] = [char] * len(df)
     df['ATK'] =  (df_hero[df_hero.Name == char]['Atk'].values[0]   *(100+mainst_df['ATK%']+subst_df['ATK%']+setst_df['ATK']+hero_ee['AtkP'])/100  +mainst_df['ATK']+subst_df['ATK']+hero_ee['Atk']).astype(int)
     df['HP'] =   (df_hero[df_hero.Name == char]['HP'].values[0]    *(100+mainst_df['HP%']+subst_df['HP%']+setst_df['HP']+hero_ee['HPP'])/100   +mainst_df['HP'] +subst_df['HP']+hero_ee['HP']).astype(int)
@@ -393,10 +373,12 @@ def get_combo_stats(df, df_hero, mainst_df, subst_df, setst_df, hero_ee, char, t
             * (df['CRIT']/100 * df['CDMG']/100 + (100-df['CRIT'])/100) \
             * df['SPD'] / 150)*10).astype(int)
 
+    # df['CATK'] = (df['ATK'] * df['CDMG'] / 100).astype(int)
+
     df['EHP'] = (df['HP'] * (1 + df['DEF']/300) / 100).astype(int)
 
-    df['WR'] = ((df['ATK']/1500 + df['SPD']/100 + df['CRIT']/30 + df['CDMG']/150 \
-                + df['HP']/5000 + df['DEF']/400 + df['EFF']/30 + df['RES']/30)*10).astype(int)
+    # df['WR'] = ((df['ATK']/1500 + df['SPD']/100 + df['CRIT']/30 + df['CDMG']/150 \
+    #             + df['HP']/5000 + df['DEF']/400 + df['EFF']/30 + df['RES']/30)*10).astype(int)
 
     df['PI'] = (df['ATK']/df_hero[df_hero.Name == char]['Atk'].values[0]/grl['max_t7'][0] \
                 + df['SPD']/df_hero[df_hero.Name == char]['Speed'].values[0]/grl['max_t7'][2] \
