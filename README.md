@@ -1,4 +1,5 @@
-# Equipment Selection and Hero Optimization for Epic Seven using Python / Jupyter Notebook
+# Equipment Selection and Hero Optimization for Epic Seven 
+## using Python / Jupyter Notebook
 
 ### About
 
