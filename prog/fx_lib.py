@@ -63,7 +63,6 @@ def verify_item_input(df):
         if (val > 0) & (gear_rating_lookup[gear_rating_lookup.stat == stat]['stat_in'].values == main_type):  check_error+=1
     if (4 - df['grade'] + pwrup) < tot_pwr:
         check_error += 100
-        print( 4 - df['grade'] + pwrup , tot_pwr)
     return check_error
 def verify_main_stats(gear_lvl, enhance, main_type, main_val, gear_type):
     main_error = 0
