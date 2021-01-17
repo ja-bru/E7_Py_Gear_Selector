@@ -13,9 +13,6 @@ import fx_lib as fx
 with open('../inp/master_data.json') as json_file:
     data = json.load(json_file)
 
-# ##### HEROES
-#df_hero = fx.hero_json_to_df(data)
-
 # #### ITEMS
 df_items = fx.item_json_to_df(data)
 df_items = fx.gear_stats(df_items)

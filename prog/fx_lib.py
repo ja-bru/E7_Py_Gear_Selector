@@ -16,7 +16,8 @@ set_4 = set_df[['Set','Set_Nm','Set_Lg']][set_df.Set_Lg == 4]
 set_2 = set_df[['Set','Set_Nm','Set_Lg']][set_df.Set_Lg == 2]
 subs_cols = ['subStat1','subStat2','subStat3','subStat4']
 
-# ### FUNCTIONS
+# ******************************************
+# ### QA functions
 def verify_setup():
     print("Checking program configuration")
     if st.MANUAL_SELECTION != 1:  print("Automated optimization is set, all heroes will run in order without user input to select gear")
@@ -77,6 +78,8 @@ def verify_main_stats(gear_lvl, enhance, main_type, main_val, gear_type):
         main_error += 1
     return main_error*10
 
+# ******************************************
+# ###### FILE CONVERSION
 def hero_json_to_df(chars, data):
     char_df = pd.read_csv('../inp/character_data.csv')
     char_list = np.sort(char_df['Character'].unique())
@@ -125,6 +128,56 @@ def clean_up_item_dictionary_input(input_dict, key1, key2):
                 input_dict[i][key1] = key2
     return input_dict.copy()
 
+# ******************************************
+# ####### START UP MESSAGES AND SET UP
+def startup_msg1(target_stats):
+    hero_order = target_stats['Hero_Order']
+    print("Heroes for optimization:", hero_order)
+    if st.NO_EQUIPPED_GEAR == 1:
+        print("No equipped gear will be included in optimization.")
+    else:
+        print("Gear on the following heroes is locked and cannot be stolen from another hero.", target_stats['Lock_Gear'])
+    print("Gear will be unlocked if new gear is equipped on that hero")
+    return hero_order
+
+def startup_msg2(df, lock_gear):
+    df['reco'] = np.where( df['hero'].isin(lock_gear) , df['hero'], df['reco'] )
+    print("Total # of items loaded:", len(df) )
+    if st.NO_EQUIPPED_GEAR == 1: print("Unequipped gear will be used. # of items: ", len(df[(df.hero == np.nan) | (df.hero == '')]) )
+    elif len(lock_gear) > 0:  print("Unequipped and unlocked gear will be used.  # of items", len(df[df.reco == '']) )
+    else:  print("All gear will be used.")
+    return df
+
+def start_hero(char, target_stats):
+    print("Hero: ", char) #, "Level ", df_hero[df_hero.Name == char]['Lvl'].values)
+    if char in target_stats:
+        build = char
+        print("Customer character build")
+    elif char in target_stats["Type"]:
+        build = target_stats['Type'][char]
+        print("Character assigned template build:", build)
+    else:
+        print("No build assigned to this character")
+        build = 'General'
+    print("Build type: ", build, "Stat priority: ", target_stats[build]['Prio'])
+
+    input_sets = target_stats[build]['input_sets']
+    exclude_sets = target_stats[build]['exclude_sets']
+    include_sets = gen_input_sets(input_sets, exclude_sets)
+    print("Sets to include for this character:", include_sets)
+    target_stats[build]['include_sets'] = include_sets.tolist()
+    if any(item in include_sets for item in set_4.Set_Nm.values) == True:
+        FORCE_4SET = 1
+        print("Looking for combinations using a four piece set only.")
+        print("To include combinations of three 2 gear sets, set FORCE_4SET = 0")
+    else:
+        FORCE_4SET = 0
+        print("Accepts all set combinations (4set+2set or 3x2set)")
+    return FORCE_4SET, char, target_stats[build]
+
+# ******************************************
+# ####### ITEM POTENTIAL FUNCTIONS
+# generates individual gear ratings and substat efficiency
 def gear_stats(df):
     newcols = {}
     for code in gear_rating_lookup.code.values:
@@ -139,7 +192,7 @@ def gear_stats(df):
         #pd.concat(df[stat] , axis=1)
     return pd.concat([df, pd.DataFrame(newcols, index=df.index)], axis=1)
 
-## Item Potential Function generates individual gear ratings and substat efficiency
+## Item Potential Function
 def item_potential(df):
     GR = 0
     spd_ind = 0
@@ -179,6 +232,13 @@ def spd_potential(p,g,s):  ## p = power ups remaining, item rarity, if speed is 
     v1 = np.where( (s==0)&(g>0)&(p>g) , 2, 0 )  ##returns 2 for heroic gear below enhance 9 or rare gear below enhance 6 if no speed sub currently
     v2 = np.where( s==1 , max(min(p,p-g),np.where(p>0,1,0)),0 )
     return (v1+v2)
+
+# ******************************************
+# ####### GENERATE COMBINATIONS TO PRODUCE COMPLETE SETS
+# ### GET COMBINATIONS OF EACH SET
+L = [0,1,2,3,4,5]
+l4 = [",".join(map(str, comb)) for comb in itertools.combinations(L, 4)]
+l2 = [",".join(map(str, comb)) for comb in itertools.combinations(L, 2)]
 
 def set_combo(item_df, hero_name, l4, l2):
     # ### EVERY COMBINATION OF UNBROKEN SETS
@@ -237,6 +297,110 @@ def set_combo(item_df, hero_name, l4, l2):
         gear_comb_dict[set_nm] = temp_dict
     return gear_comb_dict
 
+def l4comb(l4,l2):
+    l4_comb = []
+    zz = 0
+    for i in range(0,len(l4)):
+        for j in range(0,len(l2)):
+            x4 = list(set(l4[i]))
+            x4.remove(',')
+            x2 = list(set(l2[j]))
+            x2.remove(',')
+            x6 = x2.copy()
+            x6.extend(x4)
+            if len(np.unique(x6)) == 6:
+                zz += 1
+                add_list = [l4[i],l2[j]]
+                l4_comb.append(add_list)
+    return l4_comb
+
+def l2comb(l2):
+    l2_comb = []
+    zz = 0
+    for i in range(0,5):
+        for j in range(5,len(l2)):
+            for k in range(5,len(l2)):
+                x21 = sorted(list(set(l2[i])))
+                x21.remove(',')
+                x22 = sorted(list(set(l2[j])))
+                x22.remove(',')
+                x23 = sorted(list(set(l2[k])))
+                x23.remove(',')
+                x6 = x21.copy()
+                x6.extend(x22)
+                x6.extend(x23)
+                if (x21[0]<x22[0]) & (x22[0]<x23[0]) & (len(np.unique(x6))==6):
+                    zz += 1
+                    add_list = [l2[i],l2[j],l2[k]]
+                    l2_comb.append(add_list)
+    return l2_comb
+
+# ### ALL GEAR COMBINATIONS WHERE UNBROKEN
+def set_combination_iterate(gear_comb_dict, set4_list, set2_list, FORCE_4SET):
+    ##df columns
+    Itr_Sets = []
+    Set_1 = []
+    Set_2 = []
+    Set_3 = []
+    Gear = []
+    Gear2 = []
+    Complete = []
+    l4_comb = l4comb(l4,l2)
+    l2_comb = l2comb(l2)
+    for set_nm4 in set4_list:
+        for set_nm2 in set2_list:
+            for a in range(0,len(l4_comb)):
+                code4 = l4_comb[a][0]
+                code2 = l4_comb[a][1]
+                g4_set = gear_comb_dict[set_nm4][code4]
+                g2_set = gear_comb_dict[set_nm2][code2]
+                Itr_Sets.append([set_nm4,set_nm2])
+                itr = list(itertools.product( g4_set, g2_set ) )
+                Set_1.extend([set_nm4]*len(itr))
+                Set_2.extend([set_nm2]*len(itr))
+                Set_3.extend([None]*len(itr))
+                Gear.extend(itr)
+                Complete.extend([1]*len(itr))
+    if FORCE_4SET != 1:
+        for set_nm in itertools.combinations(set2_list, 3):
+            for a in range(0,len(l2_comb)):
+                code1 = l2_comb[a][0]
+                code2 = l2_comb[a][1]
+                code3 = l2_comb[a][2]
+                g2_set1 = gear_comb_dict[set_nm[0]][code1]
+                g2_set2 = gear_comb_dict[set_nm[1]][code2]
+                g2_set3 = gear_comb_dict[set_nm[2]][code3]
+                Itr_Sets.append([set_nm[0],set_nm[1],set_nm[2]])
+                itr = list(itertools.product( g2_set1, g2_set2, g2_set3 ) )
+                Set_1.extend([set_nm[0]]*len(itr))
+                Set_2.extend([set_nm[1]]*len(itr))
+                Set_3.extend([set_nm[2]]*len(itr))
+                Gear.extend(itr)
+                Complete.extend([1] * len(itr))
+    return list(zip(Set_1,Set_2,Set_3,Complete,Gear))
+
+def final_gear_combos(sc_output, char):
+    sc_df = pd.DataFrame(sc_output, columns =['Set_1', 'Set_2', 'Set_3','Complete','Gear'])
+    sc_df['gear_list'] = sc_df.apply(lambda row: gear_split(row) , axis=1)
+    sc_df[['0','1','2','3','4','5']] = pd.DataFrame(sc_df.gear_list.values.tolist(), index= sc_df.index)
+    sc_df = sc_df.drop_duplicates(['0','1','2','3','4','5'])
+    current_gear = pd.DataFrame(columns = ['Set_1', 'Set_2', 'Set_3', 'Complete', 'Gear', 'gear_list', '0', '1', '2', '3', '4', '5' ], index = ['0'])
+    try:
+        nix=0
+        for gid in range(0,6):
+            current_gear[str(gid)] = df_items[(df_items.hero == char) & (df_items.Type == gid)][['id']].values
+            val = df_items[(df_items.hero == char) & (df_items.Type == gid)][['reco']].values
+            if (val > '') & (val!=char): nix = 1
+        current_gear = get_set_bonus(current_gear, df_items)
+        if nix==1: current_gear['Complete'] = 'PREVIOUS'
+        elif nix==0: current_gear['Complete'] = 'CURRENT'
+        sc_df = sc_df.append(current_gear)
+        sc_df = sc_df.reset_index()
+        hero_with_gear = 1
+    except:
+        hero_with_gear = 0
+    return sc_df, hero_with_gear
+
 def gear_split(df):
     ##extract gear ids from tuples produced in sc.set_combination_iterate
     if df.Set_3 == None:
@@ -284,6 +448,8 @@ def gen_input_sets(include, exclude, autofill = 0):
             include.extend(set_df[(set_df.Set_Lg == 4)&(~set_df.Set_Nm.isin(exclude))&(~set_df.Set_Nm.isin(include))]['Set_Nm'].values)
     return include
 
+# ******************************************
+# ####### CALCULATE HERO STATS AND RECOMMEND OPTIMAL SETS
 def get_set_bonus(df, item_df):
     #get data for set combinations
     gears = df[['0','1','2','3','4','5']].values[0]
@@ -411,3 +577,49 @@ def get_combo_stats(df, df_hero, mainst_df, subst_df, setst_df, hero_ee, char, t
     cp2 = 1 + 0.08 * df_hero[df_hero.Name == char]['SC'].values[0] + 0.02 * df_hero[df_hero.Name == char]['EE'].values[0]
     df['CP'] = round(cp1 * cp2,0)
     return df
+
+def run_stat_reco(output, hero_with_gear, hero_target):
+    print('Progress: Step 2/4 Complete.  Number of unique combinations for optimization', len(output[output.Complete!='PREVIOUS']) )
+    if hero_with_gear == 1:
+        choice_df = output.iloc[-1:,:].copy()
+        output = output.sort_values(by = ['WW'], ascending = False )  ## faster than inplace
+    else:
+        output = output.sort_values(by = ['WW'], ascending = False )  ## faster than inplace
+        choice_df = output.iloc[:1,:].copy()
+    ## regular process
+    output2 = output.copy()
+    for stat in set_df[set_df.Bonus_Stat != 'NA'].Bonus_Stat.values:
+        output2.drop( output2[(output2[stat]).astype(int) < hero_target[stat]['Min']].index, inplace=True)
+        output2.drop( output2[(output2[stat]).astype(int) > hero_target[stat]['Max']].index, inplace=True)
+    print("Progress: Step 3/4 Complete.  The number of combinations available with stats in specified range is: ",len(output2))
+    if len(output2)==0:
+        output2 = output.copy()
+        print("Since no combinations meet criteria, best alternative combinations will be shown based on desired stat weighting.")
+    ## record high stat options to output for manual selection dataset
+    choice_df = choice_df.append(output.iloc[:3,:])
+    choice_df = choice_df.append(output2.sort_values(by = ['WW'], ascending = False ).iloc[:3,:] )
+    try:
+        for STAT in np.unique(hero_target['Prio']):
+            choice_df = choice_df.append(output.sort_values(by = STAT, ascending = False ).iloc[:3,:] )
+            choice_df = choice_df.append(output2.sort_values(by = STAT, ascending = False ).iloc[:3,:] )
+    except: pass
+    ## look for sets with top priority stats and get recommended output
+    try:
+        for i in range(0,len(hero_target['Prio'])):
+            target = hero_target['Prio'][i]
+            cut_off = output2[target].quantile(0.9)
+            output2 = output2[output2[target] >= cut_off ]
+    except: pass
+    print("combinations after prio sortings ", len(output2) )
+    idx_reco = output2.iloc[[0]].index.values[0]
+    ## add final groomed options to output for manual selection dataset
+    choice_df = choice_df.append(output2.sort_values(by = ['WW'], ascending = False ).iloc[:3,:] )
+    choice_df = choice_df.append(output2[(output2.Set_1.isin(['Unity','Immunity','Penetration'])) | (output2.Set_2.isin(['Unity','Immunity'])) | \
+            (output2.Set_3.isin(['Unity','Immunity']))].sort_values(by = ['WW'], ascending = False ).iloc[:3,:] )
+    choice_df = choice_df.append(output2[(output2.Set_1.isin(['Counter','Lifesteal','Rage','Injury','Revenge']))].sort_values(by = ['WW'], ascending = False ).iloc[:3,:] )
+    try:
+        for STAT in np.unique(hero_target['Prio']):
+            choice_df = choice_df.append(output2.sort_values(by = STAT, ascending = False ).iloc[:3,:] )
+    except: pass
+    choice_df = choice_df.drop(axis = 1, columns = ['gear_list','Gear']).drop_duplicates()
+    return idx_reco, choice_df
