@@ -11,7 +11,7 @@ The tool takes in a `.json` file with gear and hero data.  A sample file is incl
 
 ### How to use
 
-A detailed how-to is available here.  
+A detailed how-to is in progress. Here is a guide for [hero optimization via jupyter notebook](https://ja-bru.github.io/E7_Py_Gear_Selector/jupyter-walkthrough.html).  
 
 ##### Requirements
 - Python 2.7 or higher
@@ -40,6 +40,3 @@ A detailed how-to is available here.
 - CP calculation does not include Skill Enhance or Artifact [CP calculation explained](https://www.reddit.com/r/EpicSeven/comments/dvdfqp/guide_combat_power_calculation/)
 - Assumes max awakened hero at level 50 or 60
 - Not yet connected to epic seven api for character data
-
-### Sample
-
