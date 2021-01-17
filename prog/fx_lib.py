@@ -566,17 +566,17 @@ def get_combo_stats(df, df_hero, mainst_df, subst_df, setst_df, hero_ee, char, t
     df['EFF'] =  np.minimum((pull_hero_stat_format(df_flag, 'Effectiveness', df_hero_stat) +mainst_df['EFF']+subst_df['EFF']+setst_df['EFF']+hero_ee['Eff']).astype(int),100)
     df['RES'] =  np.minimum((pull_hero_stat_format(df_flag, 'Eff Resist', df_hero_stat)    +mainst_df['RES']+subst_df['RES']+setst_df['RES']+hero_ee['Res']).astype(int),100)
     ### additional columns for prioritization
-    df['Dmg_Rating'] = ((df['ATK']/ 2500 \
-            * (df['CRIT']/100 * df['CDMG']/100 + (100-df['CRIT'])/100) \
-            * df['SPD'] / 150)*10).astype(int)
     # df['CATK'] = (df['ATK'] * df['CDMG'] / 100).astype(int)
     # df['CMult'] = df['CRIT'] / 100 * df['CDMG'] / 100
-    df['EHP'] = (df['HP'] * (1 + df['DEF']/300) / 100).astype(int)
     # df['WR'] = ((df['ATK']/1500 + df['SPD']/100 + df['CRIT']/30 + df['CDMG']/150 \
     #             + df['HP']/5000 + df['DEF']/400 + df['EFF']/30 + df['RES']/30)*10).astype(int)
     cp1 = round( ((df['ATK']*1.6 + df['ATK']*1.6*df['CRIT']*df['CDMG']/10000) * (1+(df['SPD']-45)*0.02) + df['HP'] + df['DEF']*9.3) * (1 + (df['RES']+df['EFF']) / 400) , 0)
     cp2 = 1 + 0.08 * df_hero_stat['SC'].values[0] + 0.02 * df_hero_stat['EE'].values[0]
     df['CP'] = round(cp1 * cp2,0)
+    df['Dmg_Rating'] = ((df['ATK']/ 2500 \
+                    * (df['CRIT']/100 * df['CDMG']/100 + (100-df['CRIT'])/100) \
+                    * df['SPD'] / 150)*10).astype(int)
+    df['EHP'] = (df['HP'] * (1 + df['DEF']/300) / 100).astype(int)
     df['PI'] = (df['ATK']/df_hero_stat['Atk'].values[0]/grl['max_t7'][0] \
                 + df['SPD']/df_hero_stat['Speed'].values[0]/grl['max_t7'][2] \
                 + (df['CRIT'] - df_hero_stat['Crit Rate'].values[0])/100/grl['max_t7'][3] \
