@@ -1,5 +1,4 @@
 # #### SET UP
-
 import pandas as pd
 import numpy as np
 import math
@@ -9,7 +8,6 @@ from datetime import datetime
 import gear_ref_table as grt
 
 # ### PULL IN FIXED LOOKUP TABLES FOR GEAR
-
 gear_rating_lookup = grt.gear_rating_lookup.copy()
 grl = gear_rating_lookup.to_dict()
 gear_tier = pd.read_csv("../inp/gear_tiers.csv")
@@ -17,7 +15,6 @@ type_df = grt.type_df.copy()
 set_df = grt.set_df.copy()
 set_4 = set_df[['Set','Set_Nm','Set_Lg']][set_df.Set_Lg == 4]
 set_2 = set_df[['Set','Set_Nm','Set_Lg']][set_df.Set_Lg == 2]
-
 subs_cols = ['subStat1','subStat2','subStat3','subStat4']
 
 # ### FUNCTIONS
@@ -64,6 +61,7 @@ def verify_item_input(df):
     if (4 - df['grade'] + pwrup) < tot_pwr:
         check_error += 100
     return check_error
+
 def verify_main_stats(gear_lvl, enhance, main_type, main_val, gear_type):
     main_error = 0
     ##main type
@@ -96,13 +94,37 @@ def hero_json_to_df(chars, data):
     return df, char_list
 
 def item_json_to_df(data):
-    df = pd.DataFrame(data['items'])
-    df.rename(columns={'ability':'enhance'}, inplace=True) ##added this line for anyone using compeanansi OCR tool
-    df[subs_cols] = df[subs_cols].applymap(lambda x: [0,0] if x is np.nan else x)
-    #df = df.apply(lambda row: ocr_cleanup(row), axis=1)
+    #clean up formatted to increase success of raw input
+    data['items'] = clean_up_item_dictionary_input(data['items'], 'ability', 'enhance')
+    for sub in subs_cols:
+        data['items'] = clean_up_item_dictionary_input(data['items'], sub, ['',0])
+    #define target input columns and formatting
+    default_input_format =  {'hero': '','enhance': 0, 'slot': '', 'level': 0, 'set': '', 'rarity': '',
+                            'mainStat': ['X', 0], 'subStat1': ['X', 0], 'subStat2': ['X', 0], 'subStat3': ['X', 0], 'subStat4': ['X', 0],
+                            'id': '','locked': False}
+    data_list = [default_input_format]
+    data_list.extend(data['items'])
+    #convert to dataframe
+    df = pd.DataFrame(data_list, columns = default_input_format.keys())
+    df = df[1:]
     df['grade'] = df['rarity'].map(grt.r_map)
     df['Type'] = df['slot'].map(grt.t_map)
     return df
+
+def clean_up_item_dictionary_input(input_dict, key1, key2):
+    """Specific data cleanup to improves compatibility with compeanansi OCR output"""
+    if type(key2) == str:
+        for i in range(0,len(input_dict)):
+            if key1 in input_dict[i]:
+                input_dict[i][key2] = input_dict[i][key1]
+    elif type(key2) == list:
+        for i in range(0,len(input_dict)):
+            if key1 in input_dict[i]:
+                if type(input_dict[i][key1]) != list:
+                    input_dict[i][key1] = key2
+            else:
+                input_dict[i][key1] = key2
+    return input_dict.copy()
 
 def gear_stats(df):
     newcols = {}
@@ -179,8 +201,7 @@ def set_combo(item_df, hero_name, l4, l2):
         temp_df = temp_df.append([temp_df_c,temp_df_d])
         temp_df = temp_df.drop_duplicates(['id'])
         temp_df.reset_index(inplace=True)
-
-    ##iterate through set gear combinations by set
+    ##iterate through set gear combinations for two piece sets
     for set_nm in set_2.Set_Nm:
         temp_dict = {}
         temp_df2 = temp_df[ (temp_df.set == set_nm) ]
@@ -201,7 +222,7 @@ def set_combo(item_df, hero_name, l4, l2):
             app = [ [set_nm], temp_l, itr ]
             temp_dict[l4[i]] = itr
         gear_comb_dict[set_nm] = temp_dict
-
+    ##iterate through set gear combinations for four piece sets
     for set_nm in set_4.Set_Nm:
         temp_dict = {}
         temp_df2 = temp_df[ (temp_df.set == set_nm) ]
@@ -262,7 +283,6 @@ def gen_input_sets(include, exclude, autofill = 0):
         elif (x < 6):
             include.extend(set_df[(set_df.Set_Lg == 2)&(~set_df.Set_Nm.isin(exclude))&(~set_df.Set_Nm.isin(include))]['Set_Nm'].values)
             include.extend(set_df[(set_df.Set_Lg == 4)&(~set_df.Set_Nm.isin(exclude))&(~set_df.Set_Nm.isin(include))]['Set_Nm'].values)
-
     return include
 
 def get_set_bonus(df, item_df):
@@ -366,20 +386,14 @@ def get_combo_stats(df, df_hero, mainst_df, subst_df, setst_df, hero_ee, char, t
     df['CDMG'] = (df_hero[df_hero.Name == char]['Crit Dmg'].values[0]  +mainst_df['CDMG']+subst_df['CDMG']+setst_df['CDMG']+hero_ee['CDmg']).astype(int)
     df['EFF'] =  np.minimum((df_hero[df_hero.Name == char]['Effectiveness'].values[0] +mainst_df['EFF']+subst_df['EFF']+setst_df['EFF']+hero_ee['Eff']).astype(int),100)
     df['RES'] =  np.minimum((df_hero[df_hero.Name == char]['Eff Resist'].values[0]    +mainst_df['RES']+subst_df['RES']+setst_df['RES']+hero_ee['Res']).astype(int),100)
-
     ### additional columns for prioritization
-        #ratings
     df['Dmg_Rating'] = ((df['ATK']/ 2500 \
             * (df['CRIT']/100 * df['CDMG']/100 + (100-df['CRIT'])/100) \
             * df['SPD'] / 150)*10).astype(int)
-
     # df['CATK'] = (df['ATK'] * df['CDMG'] / 100).astype(int)
-
     df['EHP'] = (df['HP'] * (1 + df['DEF']/300) / 100).astype(int)
-
     # df['WR'] = ((df['ATK']/1500 + df['SPD']/100 + df['CRIT']/30 + df['CDMG']/150 \
     #             + df['HP']/5000 + df['DEF']/400 + df['EFF']/30 + df['RES']/30)*10).astype(int)
-
     df['PI'] = (df['ATK']/df_hero[df_hero.Name == char]['Atk'].values[0]/grl['max_t7'][0] \
                 + df['SPD']/df_hero[df_hero.Name == char]['Speed'].values[0]/grl['max_t7'][2] \
                 + (df['CRIT'] - df_hero[df_hero.Name == char]['Crit Rate'].values[0])/100/grl['max_t7'][3] \
@@ -388,9 +402,7 @@ def get_combo_stats(df, df_hero, mainst_df, subst_df, setst_df, hero_ee, char, t
                 + df['DEF']/df_hero[df_hero.Name == char]['Def'].values[0]/grl['max_t7'][7] \
                 + (df['EFF'] - df_hero[df_hero.Name == char]['Effectiveness'].values[0])/100/grl['max_t7'][9] \
                 + (df['RES'] - df_hero[df_hero.Name == char]['Eff Resist'].values[0])/100/grl['max_t7'][10]).astype(int)
-
     df['GR'] = subst_df['GR']/6
-
     df['WW'] = round(df['ATK']/df_hero[df_hero.Name == char]['Atk'].values[0]/grl['max_t7'][0]*target_stats['ATK']['Weight'] \
                 + df['SPD']/df_hero[df_hero.Name == char]['Speed'].values[0]/grl['max_t7'][2]*target_stats['SPD']['Weight'] \
                 + (df['CRIT']-df_hero[df_hero.Name == char]['Crit Rate'].values[0])/100/grl['max_t7'][3]*target_stats['CRIT']['Weight'] \
@@ -399,9 +411,7 @@ def get_combo_stats(df, df_hero, mainst_df, subst_df, setst_df, hero_ee, char, t
                 + df['DEF']/df_hero[df_hero.Name == char]['Def'].values[0]/grl['max_t7'][7]*target_stats['DEF']['Weight'] \
                 + (df['EFF']-df_hero[df_hero.Name == char]['Effectiveness'].values[0])/100/grl['max_t7'][9]*target_stats['EFF']['Weight'] \
                 + (df['RES']-df_hero[df_hero.Name == char]['Eff Resist'].values[0])/100/grl['max_t7'][10]*target_stats['RES']['Weight'] , 2)
-
     cp1 = round( ((df['ATK']*1.6 + df['ATK']*1.6*df['CRIT']*df['CDMG']/10000) * (1+(df['SPD']-45)*0.02) + df['HP'] + df['DEF']*9.3) * (1 + (df['RES']+df['EFF']) / 400) , 0)
     cp2 = 1 + 0.08 * df_hero[df_hero.Name == char]['SC'].values[0] + 0.02 * df_hero[df_hero.Name == char]['EE'].values[0]
     df['CP'] = round(cp1 * cp2,0)
-
     return df
