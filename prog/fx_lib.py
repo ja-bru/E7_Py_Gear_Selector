@@ -84,6 +84,7 @@ def hero_json_to_df(chars, data):
     char_df = pd.read_csv('../inp/character_data.csv')
     char_list = np.sort(char_df['Character'].unique())
     print("Missing hero stats in source file for:",[x for x in chars if x not in char_list])
+    data['heroes'] = clean_up_dictionary_input(data['heroes'], 'Artifact', 'BonusStats')
     df = pd.DataFrame( char_list , columns = ['Name'] )
     df2 = pd.DataFrame(data['heroes'])
     df = pd.merge(df,df2[['Name','Lvl','BonusStats']],how='left',on=['Name'])
@@ -97,9 +98,9 @@ def hero_json_to_df(chars, data):
 
 def item_json_to_df(data):
     #clean up formatted to increase success of raw input
-    data['items'] = clean_up_item_dictionary_input(data['items'], 'ability', 'enhance')
+    data['items'] = clean_up_dictionary_input(data['items'], 'ability', 'enhance')
     for sub in subs_cols:
-        data['items'] = clean_up_item_dictionary_input(data['items'], sub, ['',0])
+        data['items'] = clean_up_dictionary_input(data['items'], sub, ['',0])
     #define target input columns and formatting
     default_input_format =  {'hero': '','enhance': 0, 'slot': '', 'level': 0, 'set': '', 'rarity': '',
                             'mainStat': ['X', 0], 'subStat1': ['X', 0], 'subStat2': ['X', 0], 'subStat3': ['X', 0], 'subStat4': ['X', 0],
@@ -113,7 +114,7 @@ def item_json_to_df(data):
     df['Type'] = df['slot'].map(grt.t_map)
     return df
 
-def clean_up_item_dictionary_input(input_dict, key1, key2):
+def clean_up_dictionary_input(input_dict, key1, key2):
     """Specific data cleanup to improves compatibility with compeanansi OCR output"""
     if type(key2) == str:
         for i in range(0,len(input_dict)):
