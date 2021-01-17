@@ -452,7 +452,10 @@ def gen_input_sets(include, exclude, autofill = 0):
 # ####### CALCULATE HERO STATS AND RECOMMEND OPTIMAL SETS
 def get_set_bonus(df, item_df):
     #get data for set combinations
-    gears = df[['0','1','2','3','4','5']].values[0]
+    if len(df) > 1:
+        gears = df[['0','1','2','3','4','5']].values
+    else:
+        gears = df[['0','1','2','3','4','5']].values[0]
     set_stats = item_df[item_df.id.isin(gears)].groupby(['set']).count()[['id']]
     set_stats = set_df.merge(set_stats, how='inner', left_on='Set_Nm' , right_on='set')
     set_stats['Mult'] = (set_stats.id / set_stats.Set_Lg).astype(int)
@@ -538,44 +541,60 @@ def bonus_eqp_sum(hero_df):
         except: bonus_eqp_df[stat] = 0
     return bonus_eqp_df
 
-def get_combo_stats(df, df_hero, mainst_df, subst_df, setst_df, hero_ee, char, target_stats):#, mainst_df, subst_df, setst_df):
-    df['Char'] = [char] * len(df)
-    df['ATK'] =  (df_hero[df_hero.Name == char]['Atk'].values[0]   *(100+mainst_df['ATK%']+subst_df['ATK%']+setst_df['ATK']+hero_ee['AtkP'])/100  +mainst_df['ATK']+subst_df['ATK']+hero_ee['Atk']).astype(int)
-    df['HP'] =   (df_hero[df_hero.Name == char]['HP'].values[0]    *(100+mainst_df['HP%']+subst_df['HP%']+setst_df['HP']+hero_ee['HPP'])/100   +mainst_df['HP'] +subst_df['HP']+hero_ee['HP']).astype(int)
-    df['DEF'] =  (df_hero[df_hero.Name == char]['Def'].values[0]   *(100+mainst_df['DEF%']+subst_df['DEF%']+setst_df['DEF']+hero_ee['DefP'])/100 +mainst_df['DEF'] +subst_df['DEF']+hero_ee['Def']).astype(int)
-    df['SPD'] =  (df_hero[df_hero.Name == char]['Speed'].values[0] * ((100+setst_df['SPD'].values)/100) +mainst_df['SPD']+subst_df['SPD']+hero_ee['Spd'] ).astype(int)
-    df['CRIT'] = np.minimum((df_hero[df_hero.Name == char]['Crit Rate'].values[0] +mainst_df['CRIT']+subst_df['CRIT']+setst_df['CRIT']+hero_ee['CChance']).astype(int),100)
-    df['CDMG'] = (df_hero[df_hero.Name == char]['Crit Dmg'].values[0]  +mainst_df['CDMG']+subst_df['CDMG']+setst_df['CDMG']+hero_ee['CDmg']).astype(int)
-    df['EFF'] =  np.minimum((df_hero[df_hero.Name == char]['Effectiveness'].values[0] +mainst_df['EFF']+subst_df['EFF']+setst_df['EFF']+hero_ee['Eff']).astype(int),100)
-    df['RES'] =  np.minimum((df_hero[df_hero.Name == char]['Eff Resist'].values[0]    +mainst_df['RES']+subst_df['RES']+setst_df['RES']+hero_ee['Res']).astype(int),100)
+def pull_hero_stat_format(df_flag, stat, input_set):
+    if df_flag == 1:
+        stat_value = input_set[stat].values
+    else:
+        stat_value = input_set[stat].values[0]
+    return stat_value
+def get_combo_stats(df, df_hero, mainst_df, subst_df, setst_df, hero_ee, char, target_stats):
+    if char == 'all':
+        df['Char'] = df_hero['Name']
+        df_hero_stat = df_hero
+    else:
+        df['Char'] = [char] * len(df)
+        df_hero_stat = df_hero[df_hero.Name == char]
+    if len(df) > 1: df_flag = 1
+    else: df_flag = 0
+    df['ATK'] =  (pull_hero_stat_format(df_flag, 'Atk', df_hero_stat)   *(100+mainst_df['ATK%']+subst_df['ATK%']+setst_df['ATK']+hero_ee['AtkP'])/100  +mainst_df['ATK']+subst_df['ATK']+hero_ee['Atk']).astype(int)
+    df['HP'] =   (pull_hero_stat_format(df_flag, 'HP', df_hero_stat)   *(100+mainst_df['HP%']+subst_df['HP%']+setst_df['HP']+hero_ee['HPP'])/100   +mainst_df['HP'] +subst_df['HP']+hero_ee['HP']).astype(int)
+    df['DEF'] =  (pull_hero_stat_format(df_flag, 'Def', df_hero_stat)   *(100+mainst_df['DEF%']+subst_df['DEF%']+setst_df['DEF']+hero_ee['DefP'])/100 +mainst_df['DEF'] +subst_df['DEF']+hero_ee['Def']).astype(int)
+    df['SPD'] =  (pull_hero_stat_format(df_flag, 'Speed', df_hero_stat) * ((100+setst_df['SPD'].values)/100) +mainst_df['SPD']+subst_df['SPD']+hero_ee['Spd'] ).astype(int)
+    df['CRIT'] = np.minimum((pull_hero_stat_format(df_flag, 'Crit Rate', df_hero_stat) +mainst_df['CRIT']+subst_df['CRIT']+setst_df['CRIT']+hero_ee['CChance']).astype(int),100)
+    df['CDMG'] = (pull_hero_stat_format(df_flag, 'Crit Dmg', df_hero_stat)  +mainst_df['CDMG']+subst_df['CDMG']+setst_df['CDMG']+hero_ee['CDmg']).astype(int)
+    df['EFF'] =  np.minimum((pull_hero_stat_format(df_flag, 'Effectiveness', df_hero_stat) +mainst_df['EFF']+subst_df['EFF']+setst_df['EFF']+hero_ee['Eff']).astype(int),100)
+    df['RES'] =  np.minimum((pull_hero_stat_format(df_flag, 'Eff Resist', df_hero_stat)    +mainst_df['RES']+subst_df['RES']+setst_df['RES']+hero_ee['Res']).astype(int),100)
     ### additional columns for prioritization
     df['Dmg_Rating'] = ((df['ATK']/ 2500 \
             * (df['CRIT']/100 * df['CDMG']/100 + (100-df['CRIT'])/100) \
             * df['SPD'] / 150)*10).astype(int)
     # df['CATK'] = (df['ATK'] * df['CDMG'] / 100).astype(int)
+    # df['CMult'] = df['CRIT'] / 100 * df['CDMG'] / 100
     df['EHP'] = (df['HP'] * (1 + df['DEF']/300) / 100).astype(int)
     # df['WR'] = ((df['ATK']/1500 + df['SPD']/100 + df['CRIT']/30 + df['CDMG']/150 \
     #             + df['HP']/5000 + df['DEF']/400 + df['EFF']/30 + df['RES']/30)*10).astype(int)
-    df['PI'] = (df['ATK']/df_hero[df_hero.Name == char]['Atk'].values[0]/grl['max_t7'][0] \
-                + df['SPD']/df_hero[df_hero.Name == char]['Speed'].values[0]/grl['max_t7'][2] \
-                + (df['CRIT'] - df_hero[df_hero.Name == char]['Crit Rate'].values[0])/100/grl['max_t7'][3] \
-                + (df['CDMG']-df_hero[df_hero.Name == char]['Crit Dmg'].values[0])/100/grl['max_t7'][4] \
-                + df['HP']/df_hero[df_hero.Name == char]['HP'].values[0]/grl['max_t7'][5] \
-                + df['DEF']/df_hero[df_hero.Name == char]['Def'].values[0]/grl['max_t7'][7] \
-                + (df['EFF'] - df_hero[df_hero.Name == char]['Effectiveness'].values[0])/100/grl['max_t7'][9] \
-                + (df['RES'] - df_hero[df_hero.Name == char]['Eff Resist'].values[0])/100/grl['max_t7'][10]).astype(int)
-    df['GR'] = subst_df['GR']/6
-    df['WW'] = round(df['ATK']/df_hero[df_hero.Name == char]['Atk'].values[0]/grl['max_t7'][0]*target_stats['ATK']['Weight'] \
-                + df['SPD']/df_hero[df_hero.Name == char]['Speed'].values[0]/grl['max_t7'][2]*target_stats['SPD']['Weight'] \
-                + (df['CRIT']-df_hero[df_hero.Name == char]['Crit Rate'].values[0])/100/grl['max_t7'][3]*target_stats['CRIT']['Weight'] \
-                + (df['CDMG']-df_hero[df_hero.Name == char]['Crit Dmg'].values[0])/100/grl['max_t7'][4]*target_stats['CDMG']['Weight'] \
-                + df['HP']/df_hero[df_hero.Name == char]['HP'].values[0]/grl['max_t7'][5]*target_stats['HP']['Weight'] \
-                + df['DEF']/df_hero[df_hero.Name == char]['Def'].values[0]/grl['max_t7'][7]*target_stats['DEF']['Weight'] \
-                + (df['EFF']-df_hero[df_hero.Name == char]['Effectiveness'].values[0])/100/grl['max_t7'][9]*target_stats['EFF']['Weight'] \
-                + (df['RES']-df_hero[df_hero.Name == char]['Eff Resist'].values[0])/100/grl['max_t7'][10]*target_stats['RES']['Weight'] , 2)
     cp1 = round( ((df['ATK']*1.6 + df['ATK']*1.6*df['CRIT']*df['CDMG']/10000) * (1+(df['SPD']-45)*0.02) + df['HP'] + df['DEF']*9.3) * (1 + (df['RES']+df['EFF']) / 400) , 0)
-    cp2 = 1 + 0.08 * df_hero[df_hero.Name == char]['SC'].values[0] + 0.02 * df_hero[df_hero.Name == char]['EE'].values[0]
+    cp2 = 1 + 0.08 * df_hero_stat['SC'].values[0] + 0.02 * df_hero_stat['EE'].values[0]
     df['CP'] = round(cp1 * cp2,0)
+    df['PI'] = (df['ATK']/df_hero_stat['Atk'].values[0]/grl['max_t7'][0] \
+                + df['SPD']/df_hero_stat['Speed'].values[0]/grl['max_t7'][2] \
+                + (df['CRIT'] - df_hero_stat['Crit Rate'].values[0])/100/grl['max_t7'][3] \
+                + (df['CDMG']-df_hero_stat['Crit Dmg'].values[0])/100/grl['max_t7'][4] \
+                + df['HP']/df_hero_stat['HP'].values[0]/grl['max_t7'][5] \
+                + df['DEF']/df_hero_stat['Def'].values[0]/grl['max_t7'][7] \
+                + (df['EFF'] - df_hero_stat['Effectiveness'].values[0])/100/grl['max_t7'][9] \
+                + (df['RES'] - df_hero_stat['Eff Resist'].values[0])/100/grl['max_t7'][10]).astype(int)
+    df['GR'] = subst_df['GR']/6
+    df['WW'] = round(df['ATK']/df_hero_stat['Atk'].values[0]/grl['max_t7'][0]*target_stats['ATK']['Weight'] \
+                + df['SPD']/df_hero_stat['Speed'].values[0]/grl['max_t7'][2]*target_stats['SPD']['Weight'] \
+                + (df['CRIT']-df_hero_stat['Crit Rate'].values[0])/100/grl['max_t7'][3]*target_stats['CRIT']['Weight'] \
+                + (df['CDMG']-df_hero_stat['Crit Dmg'].values[0])/100/grl['max_t7'][4]*target_stats['CDMG']['Weight'] \
+                + df['HP']/df_hero_stat['HP'].values[0]/grl['max_t7'][5]*target_stats['HP']['Weight'] \
+                + df['DEF']/df_hero_stat['Def'].values[0]/grl['max_t7'][7]*target_stats['DEF']['Weight'] \
+                + (df['EFF']-df_hero_stat['Effectiveness'].values[0])/100/grl['max_t7'][9]*target_stats['EFF']['Weight'] \
+                + (df['RES']-df_hero_stat['Eff Resist'].values[0])/100/grl['max_t7'][10]*target_stats['RES']['Weight'] , 2)
+    df['Element'] = df_hero_stat['Element']
+    df['Role'] = df_hero_stat['Role']
     return df
 
 def run_stat_reco(output, hero_with_gear, hero_target):
