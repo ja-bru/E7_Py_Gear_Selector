@@ -15,7 +15,8 @@ A detailed how-to is available here.
 
 ##### Requirements
 - Python 2.7 or higher
-- JupyterLab
+- Jupyter Notebook
+  - Download and install the 64 bit Anaconda python 3.x distribution for Windows: https://www.anaconda.com/products/individual
 - Screenshots of your gear or ready-formatted gear list
 
 ##### Quickstart
@@ -33,7 +34,7 @@ A detailed how-to is available here.
 - Add in stat bonuses from Exclusive Equipment, Memory Imprint, Artifacts, Specialty Change
 
 #### Restrictions
-- Only looks at complete sets
+- Only outputs complete sets
 - No feature to select main stat for Necklace/Ring/Boots
 - Customizability requires more upfront effort tinkering with settings
 - CP calculation does not include Skill Enhance or Artifact [CP calculation explained](https://www.reddit.com/r/EpicSeven/comments/dvdfqp/guide_combat_power_calculation/)
@@ -41,3 +42,4 @@ A detailed how-to is available here.
 - Not yet connected to epic seven api for character data
 
 ### Sample
+
