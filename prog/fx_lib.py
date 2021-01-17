@@ -4,7 +4,6 @@ import numpy as np
 import math
 import itertools
 import setup as st
-from datetime import datetime
 import gear_ref_table as grt
 
 # ### PULL IN FIXED LOOKUP TABLES FOR GEAR
@@ -310,7 +309,6 @@ def enhance_mult(x):
     return z
 
 def set_sum(df):
-    # print("started function set sum:   ", datetime.now())
     setst_df = df.copy()
     for stat in np.unique(set_df[set_df.Bonus_Stat != 'NA'].Bonus_Stat.values):
         mult = [0]*len(setst_df)
@@ -323,7 +321,6 @@ def set_sum(df):
     return setst_df
 
 def subst_sum(df, item_df):
-    # print("started function subst sum:   ", datetime.now())
     subst_cols = list(gear_rating_lookup.stat)
     subst_cols.extend(['id','GR'])
     suff_cols = ['0','1','2','3','4','5']
@@ -344,7 +341,6 @@ def subst_sum(df, item_df):
     return subst_df
 
 def mainst_sum(df, item_df):
-    # print("started function mainst sum:   ", datetime.now())
     mainst_df = df.copy()
     mainst_cols = ['id','main_tp','main_val','level','enhance']
     for subst in mainst_cols:
