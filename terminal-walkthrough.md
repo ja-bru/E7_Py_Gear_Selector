@@ -36,7 +36,10 @@ Once the optimizer finishes, you will see a refined list of gear options and a p
 <img alt="terminal_gear_select" src="https://github.com/ja-bru/E7_Py_Gear_Selector/blob/gh-pages/_image/terminal_selection.png?raw=true">
 <img alt="terminal_hero_summary" src="https://github.com/ja-bru/E7_Py_Gear_Selector/blob/gh-pages/_image/terminal_complete.png?raw=true">
 
+The list is typically anywhere from 3 - 20 options depending on the variations for your hero.  You'll quickly see the chosen final stats with a message letting you know the hero is finished before looping back to the next hero.  
 <b>That's it! The CLI will take you through each hero you've listed in `hero_order = []`</b>.  Results are saved after each hero is completed.
+
+<b>Once all your heroes are completed, you can visit either `outp/upd_items.json` or `reco/gear_reco.csv`.</b>
 
 ##### Additional notes
 How is the list of gear sets created?
@@ -44,10 +47,5 @@ How is the list of gear sets created?
 2.  After applying the min/max target stats (if any combinations meet that criteria), you will again get the top combinations based on WW & Priority Stats within the min/max stat ranges.
 3.  A filtered list that looks for combinations with high performance in each of the Priority Stats combined will be displayed.
 
-The list is typically anywhere from 3 - 20 options depending on the variations for your hero.
-
-You'll quickly see the chosen final stats with a message letting you know the hero is finished before looping back to the next hero.
-
-Once all your heroes are completed, you can visit either `outp/upd_items.json` or `reco/gear_reco.csv`.
-
-
+No available gear?
+Based on the input settings and the available gear, no combinations might be found.  For example, you've specified the hero must have a Speed/Critical set and you have no unequipped Speed/Critical Boots left.  A message will display asking to Skip (move to next hero), Retry (rerun the same hero, but will look at additional sets), or Exit (stop the optimization).  As mentioned above, Exit does not lose previous data.  If you do not enter a selection, the system will automatically Retry one time; if the error happens twice for the same hero, it will Skip.
