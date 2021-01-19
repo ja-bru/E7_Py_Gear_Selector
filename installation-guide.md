@@ -12,14 +12,15 @@ nav_order: 2
 
 #### Download the source code
 
-<img src="/_image/dl_source_code.png" alt="source_code" width="250x">
+<img src="https://github.com/ja-bru/E7_Py_Gear_Selector/blob/gh-pages/_image/dl_source_code.png" alt="source_code" width="50x">
+
 
 Once you've installed Anaconda (below), you can open Jupyter Notebook from the dashboard.  Find the folder you've downloaded the Py_Gear_Selector source code and open the file `Hero_Optimization_Notebook.ipynb` from the `E7_Py_Gear_Selector/prog/`
 
 #### Jupyter Notebook
 To use the Jupyter Notebook feature, you will need to install Anaconda or Miniconda.  Visit https://www.anaconda.com/products/individual to download Anaconda on your operating system.  Anaconda comes with a suite of tools at your disposal and automatically installs everything you need to run the notebook (or to use Python from Command Line Interface (CLI) / Terminal). 
 
-<img src="/_image/anaconda_gui.png" alt="anaconda" width="350x">
+<img src="https://github.com/ja-bru/E7_Py_Gear_Selector/blob/gh-pages/_image/anaconda_gui.png" alt="anaconda">
 
 #### Get your gear ready
 
