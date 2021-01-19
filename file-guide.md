@@ -6,7 +6,7 @@ nav_order: 5
 
 ## File Guide
 
-Part 1:  Key Files 
+<b>Part 1:  Key Files </b>
 <br>
 | File | Folder | Description |
 | --- | --- | --- |
@@ -21,8 +21,8 @@ Part 1:  Key Files
 | gear_tiers.csv | inp | Contains hard-coded data on equipment stats based on level |
 | Other `prog/*.py` files | prog | These are the background files to run the program |
 
-Part 2:  Outputs <br>
-
+<br><b>Part 2:  Outputs </b>
+<br>
 | File | Folder | Description |
 | --- | --- | --- |
 | upd_items.json | outp | Saved data from optimization runs.  Outputs the updated version of `master_data['items']`.  Recommend copying this data to replace the items in `master_data.json` once you've regeared your heroes. |
