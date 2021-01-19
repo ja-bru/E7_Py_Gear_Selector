@@ -1,4 +1,5 @@
-## Guide to stat calculations and custom stats in this optimizer
+## Calculated Stat
+### Guide to stat calculations and custom stats in this optimizer
 
 ### Combat Power (CP)
 
@@ -43,4 +44,4 @@ Example of WW Calculation:<br>
 
 There are some definite flaws in the way WW is calculated.  For example, it makes a 200 speed Krau equivalent to a 12k HP Krau, essentially doubling speed vs doubling HP, but as we know, one is much harder to do than the other.  I'm definitely willing to make some adjustments to this metric with any feedback, or add one or two new metrics.
 
-![Calculated columns](https://github.com/ja-bru/E7_Py_Gear_Selector/blob/development/img/custom_stat_calculation.png?raw=true)
+![Calculated columns](/_image/custom_stat_calculation.png)
