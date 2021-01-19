@@ -10,9 +10,11 @@
 #### Using the notebook
 So, you've downloaded the source code, you have Jupyter installed, and you've got your gear input.  You're ready to open `Hero_Optimization_Notebook`.
 <br><br><b>Step 1:</b>  <br>Run each of the cells to initialize the notebook.
+<br>![Initial cells](_image/1_initialize_notebook.png?raw=true)
 <br>![Initial cells](/_image/1_initialize_notebook.png?raw=true)
 <br>In the notebook there is a description of the settings and you can uncomment and edit any of the settings before proceeding.  To uncomment cells, remove the leading _#s_.
 <br>![Settings](/_image/2_setup_fields.png)
+<br>![Settings](_image/2_setup_fields.png)
 If you do not edit any of these fields, it will take the default values from the `setup.py` file.
 <br>
 <br><b>Step 2:</b>  <br>Keep running the cells until you reach the image below.  Here you can uncomment and specify a list of heroes.
@@ -27,13 +29,13 @@ If you do not edit any of these fields, it will take the default values from the
 <br>![Choose Hero](_image/choosing_hero.png)
 <br> Next, you can choose the sets you want to run through optimization.  At this time, broken sets are not calculated.
 <br> You can weight stats to help select gear with the desired stats.  Weighting is used for the field `WW` described [here](stat-guide.md)
-<br><img alt="" src="/_image/choosing_sets_stats.png?raw=true")
+<br><img alt="" src="/_image/choosing_sets_stats.png?raw=true">
 <br>
 <br><b>Step 4:</b>
 <br> Run all the cells until you get to Section 4 in the notebook.  At the beginning of Section 4, some automated gear combinations will be displayed, and you can get a sense of what's available.  You can use the next cell (see below) to filter the outputs in the `print_df` cell output.
 <br>![Filter Output](/_image/filter_outputs.png)
-<br><img alt="Filter Output" src="https://github.com/ja-bru/E7_Py_Gear_Selector/blob/gh-pages/_image/filter_outputs.png?raw=true")
-<br><img alt="Filter Output" src="https://github.com/ja-bru/E7_Py_Gear_Selector/blob/gh-pages/_image/filter_outputs.png")
+<br><img alt="Filter Output" src="https://github.com/ja-bru/E7_Py_Gear_Selector/blob/gh-pages/_image/filter_outputs.png?raw=true">
+<br><img alt="Filter Output" src="https://github.com/ja-bru/E7_Py_Gear_Selector/blob/gh-pages/_image/filter_outputs.png">
 <br> As you can play through the outputs, take note of the index number (the first number in each row), as you'll use that row index to select the desired output.
 <br>
 <br><b>Step 5:</b>
