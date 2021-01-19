@@ -1,4 +1,4 @@
 $ cat .gitignore
 
 **/.ipynb_checkpoints
-**/.__pycache__
+**/__pycache__
