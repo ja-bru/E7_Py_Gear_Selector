@@ -7,6 +7,7 @@ nav_order: 5
 ## File Guide
 
 <b>Part 1:  Key Files </b>
+<br> Also see [Configuration](input_file_setup.html)
 <br>
 | File | Folder | Description |
 | --- | --- | --- |
