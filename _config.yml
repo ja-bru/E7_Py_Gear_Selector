@@ -1,1 +1,10 @@
 remote_theme: pmarsceill/just-the-docs
+color_scheme: dark
+
+
+## Specify Navigation Order
+---
+layout: default
+title: file-guide
+nav_order: 2
+---
