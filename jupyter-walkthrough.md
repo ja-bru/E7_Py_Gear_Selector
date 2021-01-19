@@ -1,3 +1,9 @@
+---
+layout: default
+title: Notebook-Walkthrough
+nav_order: 3
+---
+
 ## Jupyter Notebook Walkthrough
 ### Using the optimization notebook
 <br> First off, in order to make the most of the Jupyter notebook, there are a few things you should do before you even open or run the notebook.
