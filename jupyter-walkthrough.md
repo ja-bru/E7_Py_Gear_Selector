@@ -10,7 +10,7 @@
 #### Using the notebook
 So, you've downloaded the source code, you have Jupyter installed, and you've got your gear input.  You're ready to open `Hero_Optimization_Notebook`.
 <br><br><b>Step 1:</b>  <br>Run each of the cells to initialize the notebook.
-<br><img src="/_image/1_initialize_notebook.png" alt="Initial cells" height="500">
+<br>![Initial cells](/_image/1_initialize_notebook.png){:height="50%"}
 <br>In the notebook there is a description of the settings and you can uncomment and edit any of the settings before proceeding.  To uncomment cells, remove the leading _#s_.
 <br><img src="/_image/2_setup_fields.png" alt="Settings">
 If you do not edit any of these fields, it will take the default values from the `setup.py` file.
