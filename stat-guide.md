@@ -44,4 +44,4 @@ Example of WW Calculation:<br>
 
 There are some definite flaws in the way WW is calculated.  For example, it makes a 200 speed Krau equivalent to a 12k HP Krau, essentially doubling speed vs doubling HP, but as we know, one is much harder to do than the other.  I'm definitely willing to make some adjustments to this metric with any feedback, or add one or two new metrics.
 
-<img alt="Calculated columns" src="https://github.com/ja-bru/E7_Py_Gear_Selector/blob/gh-pages/_image/custom_stat_calculation.png?raw=true")
+<br><img alt="Custom_stat_code" src="https://github.com/ja-bru/E7_Py_Gear_Selector/blob/gh-pages/_image/custom_stat_calculation.png?raw=true">
