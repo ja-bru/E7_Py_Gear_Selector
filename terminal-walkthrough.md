@@ -24,16 +24,21 @@ Ensure you've updated each of the following files:
 
 From the `*/prog` folder, you'll need to run two files. 
 1. Run `python item_potential.py` to analyze the gear in `master_data.json`.  Once you've done this once, you don't need to do it again unless you want to overwrite the file with whatever updates you've made to `master_data.json` 
-2. Run `python hero_opt.py`.  Double check your `setup.py` file before running!
+2. Run `python run_hero_opt.py`.  Double check your `setup.py` file before running!
 
 If you have manual selection turned off, you don't need to do anything.  Wait a few seconds to make sure your first hero is running and then it's on autopilot.  Status messages and updates will show on the screen as your heroes run, but it's going in full auto mode so come back later to review your outputs.
 
 As the script starts running, you will see messages similar to this:
-<insert image>
+<img alt="terminal_startup" src="https://github.com/ja-bru/E7_Py_Gear_Selector/blob/gh-pages/_image/terminal_startup_msg.png?raw=true">
+<img alt="hero_start" src="https://github.com/ja-bru/E7_Py_Gear_Selector/blob/gh-pages/_image/terminal_hero_start_msg.png?raw=true">
 
 Once the optimizer finishes, you will see a refined list of gear options and a prompt to enter the index for the gear stats you prefer:
-<insert image>
+<img alt="terminal_gear_select" src="https://github.com/ja-bru/E7_Py_Gear_Selector/blob/gh-pages/_image/terminal_selection.png?raw=true">
+<img alt="terminal_hero_summary" src="https://github.com/ja-bru/E7_Py_Gear_Selector/blob/gh-pages/_image/terminal_complete.png?raw=true">
 
+<b>That's it! The CLI will take you through each hero you've listed in `hero_order = []`</b>.  Results are saved after each hero is completed.
+
+##### Additional notes
 How is the list of gear sets created?
 1.  If you entered priority stats, it shows you a couple sets that give the best overall stat boost to your hero based on the weightings you assigned (highest WW values) and the top priority stats.  For example, if your hero has 'Speed' as a priority stat in the `character_input.yaml` you will see the combinations that produce the highest speed.
 2.  After applying the min/max target stats (if any combinations meet that criteria), you will again get the top combinations based on WW & Priority Stats within the min/max stat ranges.
