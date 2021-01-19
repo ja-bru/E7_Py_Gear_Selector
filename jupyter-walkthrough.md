@@ -4,7 +4,7 @@
 <br> MUST DO:
 <br> 1. You need to add your items into the `master_data.json`
 <br> OPTIONAL:
-<br> 3. Add your heroes into `master_data.json`.  You don't have to do this step, in fact, I don't add all my heroes.  I do add the ones with exclusive equipment or specialty change.  This is because you can use the `"BonusStats"`key to add in stats from exclusive equipment, fixed stat specialty change runes, or artifacts.  The sample file includes a few SC and EE heroes in there already.
+<br> 3. Add your heroes into `master_data.json`.  You don't have to do this step, in fact, I don't add all my heroes.  I do add the ones with exclusive equipment or specialty change.  This is because you can use the `"BonusStats"` key to add in stats from exclusive equipment, fixed stat specialty change runes, or artifacts.  The sample file includes a few SC and EE heroes in there already.
 <br> 4. If you know the heroes you'd like to optimize, or heroes that you don't want touched, you can add them in an ordered list to `character_inputs.yaml`; but you can do this directly in the notebook as well (see below).
 
 #### Using the notebook
