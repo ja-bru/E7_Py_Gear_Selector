@@ -1,4 +1,10 @@
-## About
+---
+layout: default
+title: Home
+nav_order: 1
+---
+
+## Home
 #### Guide to using this Gear Selector tool
 
 Why use this optimizer?
