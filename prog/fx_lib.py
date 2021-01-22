@@ -82,7 +82,7 @@ def verify_main_stats(gear_lvl, enhance, main_type, main_val, gear_type):
 # ###### FILE CONVERSION
 def hero_json_to_df(chars, data):
     char_df = pd.read_csv('../inp/character_data.csv')
-    char_list = np.sort(char_df['Character'].unique())
+    char_list = np.sort(char_df[grt.e7api_map['hero']].unique())
     print("Missing hero stats in source file for:",[x for x in chars if x not in char_list])
     data['heroes'] = clean_up_dictionary_input(data['heroes'], 'Artifact', 'BonusStats')
     df = pd.DataFrame( char_list , columns = ['Name'] )
@@ -90,9 +90,9 @@ def hero_json_to_df(chars, data):
     df = pd.merge(df,df2[['Name','Lvl','BonusStats']],how='left',on=['Name'])
     df['Lvl'] = df['Lvl'].fillna(st.MIN_LEVEL)
     df['Lvl'] = df['Lvl'].clip(lower=st.MIN_LEVEL)
-    df = df.merge(char_df, how='left', left_on = ['Name','Lvl'], right_on = ['Character','Level'])
-    if len(df['Character'][df['Atk'].isnull()]) > 0:
-        print("Error: Character data missing from source file", df['Name'][df['Atk'].isnull()].values)
+    df = df.merge(char_df, how='left', left_on = ['Name','Lvl'], right_on = [grt.e7api_map['hero'],grt.e7api_map['level']])
+    if len(df['Name'][df[grt.e7api_map['atk']].isnull()]) > 0:
+        print("Error: Character data missing from source file", df['Name'][df[grt.e7api_map['atk']].isnull()].values)
         exit()
     return df, char_list
 
@@ -557,54 +557,54 @@ def get_combo_stats(df, df_hero, mainst_df, subst_df, setst_df, hero_ee, char, t
         df_hero_stat = df_hero[df_hero.Name == char]
     if len(df) > 1: df_flag = 1
     else: df_flag = 0
-    df['ATK'] =  (pull_hero_stat_format(df_flag, 'Atk', df_hero_stat)   *(100+mainst_df['ATK%']+subst_df['ATK%']+setst_df['ATK']+hero_ee['AtkP'])/100  +mainst_df['ATK']+subst_df['ATK']+hero_ee['Atk']).astype(int)
-    df['HP'] =   (pull_hero_stat_format(df_flag, 'HP', df_hero_stat)   *(100+mainst_df['HP%']+subst_df['HP%']+setst_df['HP']+hero_ee['HPP'])/100   +mainst_df['HP'] +subst_df['HP']+hero_ee['HP']).astype(int)
-    df['DEF'] =  (pull_hero_stat_format(df_flag, 'Def', df_hero_stat)   *(100+mainst_df['DEF%']+subst_df['DEF%']+setst_df['DEF']+hero_ee['DefP'])/100 +mainst_df['DEF'] +subst_df['DEF']+hero_ee['Def']).astype(int)
-    df['SPD'] =  (pull_hero_stat_format(df_flag, 'Speed', df_hero_stat) * ((100+setst_df['SPD'].values)/100) +mainst_df['SPD']+subst_df['SPD']+hero_ee['Spd'] ).astype(int)
-    df['CRIT'] = np.minimum((pull_hero_stat_format(df_flag, 'Crit Rate', df_hero_stat) +mainst_df['CRIT']+subst_df['CRIT']+setst_df['CRIT']+hero_ee['CChance']).astype(int),100)
-    df['CDMG'] = (pull_hero_stat_format(df_flag, 'Crit Dmg', df_hero_stat)  +mainst_df['CDMG']+subst_df['CDMG']+setst_df['CDMG']+hero_ee['CDmg']).astype(int)
-    df['EFF'] =  np.minimum((pull_hero_stat_format(df_flag, 'Effectiveness', df_hero_stat) +mainst_df['EFF']+subst_df['EFF']+setst_df['EFF']+hero_ee['Eff']).astype(int),100)
-    df['RES'] =  np.minimum((pull_hero_stat_format(df_flag, 'Eff Resist', df_hero_stat)    +mainst_df['RES']+subst_df['RES']+setst_df['RES']+hero_ee['Res']).astype(int),100)
+    df['ATK'] =  (pull_hero_stat_format(df_flag, grt.e7api_map['atk'], df_hero_stat)   *(100+mainst_df['ATK%']+subst_df['ATK%']+setst_df['ATK']+hero_ee['AtkP'])/100  +mainst_df['ATK']+subst_df['ATK']+hero_ee['Atk']).astype(int)
+    df['HP'] =   (pull_hero_stat_format(df_flag, grt.e7api_map['hp'], df_hero_stat)   *(100+mainst_df['HP%']+subst_df['HP%']+setst_df['HP']+hero_ee['HPP'])/100   +mainst_df['HP'] +subst_df['HP']+hero_ee['HP']).astype(int)
+    df['DEF'] =  (pull_hero_stat_format(df_flag, grt.e7api_map['def'], df_hero_stat)   *(100+mainst_df['DEF%']+subst_df['DEF%']+setst_df['DEF']+hero_ee['DefP'])/100 +mainst_df['DEF'] +subst_df['DEF']+hero_ee['Def']).astype(int)
+    df['SPD'] =  (pull_hero_stat_format(df_flag, grt.e7api_map['spd'], df_hero_stat) * ((100+setst_df['SPD'].values)/100) +mainst_df['SPD']+subst_df['SPD']+hero_ee['Spd'] ).astype(int)
+    df['CRIT'] = np.minimum((pull_hero_stat_format(df_flag, grt.e7api_map['crit'], df_hero_stat) +mainst_df['CRIT']+subst_df['CRIT']+setst_df['CRIT']+hero_ee['CChance']).astype(int),100)
+    df['CDMG'] = (pull_hero_stat_format(df_flag, grt.e7api_map['cdmg'], df_hero_stat)  +mainst_df['CDMG']+subst_df['CDMG']+setst_df['CDMG']+hero_ee['CDmg']).astype(int)
+    df['EFF'] =  np.minimum((pull_hero_stat_format(df_flag, grt.e7api_map['eff'], df_hero_stat) +mainst_df['EFF']+subst_df['EFF']+setst_df['EFF']+hero_ee['Eff']).astype(int),100)
+    df['RES'] =  np.minimum((pull_hero_stat_format(df_flag, grt.e7api_map['res'], df_hero_stat)    +mainst_df['RES']+subst_df['RES']+setst_df['RES']+hero_ee['Res']).astype(int),100)
     ### additional columns for prioritization
     # df['CATK'] = (df['ATK'] * df['CDMG'] / 100).astype(int)
     # df['CMult'] = df['CRIT'] / 100 * df['CDMG'] / 100
     # df['WR'] = ((df['ATK']/1500 + df['SPD']/100 + df['CRIT']/30 + df['CDMG']/150 \
     #             + df['HP']/5000 + df['DEF']/400 + df['EFF']/30 + df['RES']/30)*10).astype(int)
     cp1 = round( ((df['ATK']*1.6 + df['ATK']*1.6*df['CRIT']*df['CDMG']/10000) * (1+(df['SPD']-45)*0.02) + df['HP'] + df['DEF']*9.3) * (1 + (df['RES']+df['EFF']) / 400) , 0)
-    cp2 = 1 + 0.08 * df_hero_stat['SC'].values[0] + 0.02 * df_hero_stat['EE'].values[0]
+    cp2 = 1 + 0.08 * df_hero_stat[grt.e7api_map['sc']].values[0] + 0.02 * df_hero_stat[grt.e7api_map['ee']].values[0]
     df['CP'] = round(cp1 * cp2,0)
     df['Dmg_Rating'] = ((df['ATK']/ 2500 \
                     * (df['CRIT']/100 * df['CDMG']/100 + (100-df['CRIT'])/100) \
                     * df['SPD'] / 150)*10).astype(int)
     df['EHP'] = (df['HP'] * (1 + df['DEF']/300) / 100).astype(int)
-    df['PI'] = (df['ATK']/df_hero_stat['Atk'].values[0]/grl['max_t7'][0] \
-                + df['SPD']/df_hero_stat['Speed'].values[0]/grl['max_t7'][2] \
-                + (df['CRIT'] - df_hero_stat['Crit Rate'].values[0])/100/grl['max_t7'][3] \
-                + (df['CDMG']-df_hero_stat['Crit Dmg'].values[0])/100/grl['max_t7'][4] \
-                + df['HP']/df_hero_stat['HP'].values[0]/grl['max_t7'][5] \
-                + df['DEF']/df_hero_stat['Def'].values[0]/grl['max_t7'][7] \
-                + (df['EFF'] - df_hero_stat['Effectiveness'].values[0])/100/grl['max_t7'][9] \
-                + (df['RES'] - df_hero_stat['Eff Resist'].values[0])/100/grl['max_t7'][10]).astype(int)
+    df['PI'] = (df['ATK']/df_hero_stat[grt.e7api_map['atk']].values[0]/grl['max_t7'][0] \
+                + df['SPD']/df_hero_stat[grt.e7api_map['spd']].values[0]/grl['max_t7'][2] \
+                + (df['CRIT'] - df_hero_stat[grt.e7api_map['crit']].values[0])/100/grl['max_t7'][3] \
+                + (df['CDMG']-df_hero_stat[grt.e7api_map['cdmg']].values[0])/100/grl['max_t7'][4] \
+                + df['HP']/df_hero_stat[grt.e7api_map['hp']].values[0]/grl['max_t7'][5] \
+                + df['DEF']/df_hero_stat[grt.e7api_map['def']].values[0]/grl['max_t7'][7] \
+                + (df['EFF'] - df_hero_stat[grt.e7api_map['eff']].values[0])/100/grl['max_t7'][9] \
+                + (df['RES'] - df_hero_stat[grt.e7api_map['res']].values[0])/100/grl['max_t7'][10]).astype(int)
     df['GR'] = subst_df['GR']/6
-    df['WW'] = round(df['ATK']/df_hero_stat['Atk'].values[0]/grl['max_t7'][0]*target_stats['ATK']['Weight'] \
-                + df['SPD']/df_hero_stat['Speed'].values[0]/grl['max_t7'][2]*target_stats['SPD']['Weight'] \
-                + (df['CRIT']-df_hero_stat['Crit Rate'].values[0])/100/grl['max_t7'][3]*target_stats['CRIT']['Weight'] \
-                + (df['CDMG']-df_hero_stat['Crit Dmg'].values[0])/100/grl['max_t7'][4]*target_stats['CDMG']['Weight'] \
-                + df['HP']/df_hero_stat['HP'].values[0]/grl['max_t7'][5]*target_stats['HP']['Weight'] \
-                + df['DEF']/df_hero_stat['Def'].values[0]/grl['max_t7'][7]*target_stats['DEF']['Weight'] \
-                + (df['EFF']-df_hero_stat['Effectiveness'].values[0])/100/grl['max_t7'][9]*target_stats['EFF']['Weight'] \
-                + (df['RES']-df_hero_stat['Eff Resist'].values[0])/100/grl['max_t7'][10]*target_stats['RES']['Weight'] , 2)
-    df['Element'] = df_hero_stat['Element']
-    df['Role'] = df_hero_stat['Role']
+    df['WW'] = round(df['ATK']/df_hero_stat[grt.e7api_map['atk']].values[0]/grl['max_t7'][0]*target_stats['ATK']['Weight'] \
+                + df['SPD']/df_hero_stat[grt.e7api_map['spd']].values[0]/grl['max_t7'][2]*target_stats['SPD']['Weight'] \
+                + (df['CRIT']-df_hero_stat[grt.e7api_map['crit']].values[0])/100/grl['max_t7'][3]*target_stats['CRIT']['Weight'] \
+                + (df['CDMG']-df_hero_stat[grt.e7api_map['cdmg']].values[0])/100/grl['max_t7'][4]*target_stats['CDMG']['Weight'] \
+                + df['HP']/df_hero_stat[grt.e7api_map['hp']].values[0]/grl['max_t7'][5]*target_stats['HP']['Weight'] \
+                + df['DEF']/df_hero_stat[grt.e7api_map['def']].values[0]/grl['max_t7'][7]*target_stats['DEF']['Weight'] \
+                + (df['EFF']-df_hero_stat[grt.e7api_map['eff']].values[0])/100/grl['max_t7'][9]*target_stats['EFF']['Weight'] \
+                + (df['RES']-df_hero_stat[grt.e7api_map['res']].values[0])/100/grl['max_t7'][10]*target_stats['RES']['Weight'] , 2)
+    df['Element'] = df_hero_stat[grt.e7api_map['element']]
+    df['Role'] = df_hero_stat[grt.e7api_map['role']]
     return df
 
 def run_stat_reco(output, hero_with_gear, hero_target):
     print('Progress: Step 2/4 Complete.  Number of unique combinations for optimization', len(output[output.Complete!='PREVIOUS']) )
     if hero_with_gear == 1:
         choice_df = output.iloc[-1:,:].copy()
-        output = output.sort_values(by = ['WW'], ascending = False )  ## faster than inplace
+        output = output.sort_values(by = [st.primary_sort_stat], ascending = False )  ## faster than inplace
     else:
-        output = output.sort_values(by = ['WW'], ascending = False )  ## faster than inplace
+        output = output.sort_values(by = [st.primary_sort_stat], ascending = False )  ## faster than inplace
         choice_df = output.iloc[:1,:].copy()
     ## regular process
     output2 = output.copy()
@@ -617,7 +617,7 @@ def run_stat_reco(output, hero_with_gear, hero_target):
         print("Since no combinations meet criteria, best alternative combinations will be shown based on desired stat weighting.")
     ## record high stat options to output for manual selection dataset
     choice_df = choice_df.append(output.iloc[:3,:])
-    choice_df = choice_df.append(output2.sort_values(by = ['WW'], ascending = False ).iloc[:3,:] )
+    choice_df = choice_df.append(output2.sort_values(by = [st.primary_sort_stat], ascending = False ).iloc[:3,:] )
     try:
         for STAT in np.unique(hero_target['Prio']):
             choice_df = choice_df.append(output.sort_values(by = STAT, ascending = False ).iloc[:3,:] )
@@ -633,10 +633,10 @@ def run_stat_reco(output, hero_with_gear, hero_target):
     print("combinations after prio sortings ", len(output2) )
     idx_reco = output2.iloc[[0]].index.values[0]
     ## add final groomed options to output for manual selection dataset
-    choice_df = choice_df.append(output2.sort_values(by = ['WW'], ascending = False ).iloc[:3,:] )
+    choice_df = choice_df.append(output2.sort_values(by = [st.primary_sort_stat], ascending = False ).iloc[:3,:] )
     choice_df = choice_df.append(output2[(output2.Set_1.isin(['Unity','Immunity','Penetration'])) | (output2.Set_2.isin(['Unity','Immunity'])) | \
-            (output2.Set_3.isin(['Unity','Immunity']))].sort_values(by = ['WW'], ascending = False ).iloc[:3,:] )
-    choice_df = choice_df.append(output2[(output2.Set_1.isin(['Counter','Lifesteal','Rage','Injury','Revenge']))].sort_values(by = ['WW'], ascending = False ).iloc[:3,:] )
+            (output2.Set_3.isin(['Unity','Immunity']))].sort_values(by = [st.primary_sort_stat], ascending = False ).iloc[:3,:] )
+    choice_df = choice_df.append(output2[(output2.Set_1.isin(['Counter','Lifesteal','Rage','Injury','Revenge']))].sort_values(by = [st.primary_sort_stat], ascending = False ).iloc[:3,:] )
     try:
         for STAT in np.unique(hero_target['Prio']):
             choice_df = choice_df.append(output2.sort_values(by = STAT, ascending = False ).iloc[:3,:] )

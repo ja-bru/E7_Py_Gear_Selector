@@ -65,3 +65,11 @@ for i in range(0,11):
 
 gear_scaling = {0: 1, 1: 1.2, 2: 1.4, 3: 1.6, 4: 1.8, 5: 2.0, 6: 2.2, \
                 7: 2.4, 8: 2.6, 9: 2.8, 10: 3.0, 11: 3.3, 12: 3.6, 13: 3.9, 14: 4.25, 15: 5.0}
+
+e7api_map = {
+    'cp': 'cp', 'atk': 'atk', 'hp': 'hp', 'spd': 'spd', 'def': 'def',
+    'crit': 'chc', 'cdmg': 'chd', 'eff': 'eff', 'res': 'efr',
+    'sc': 'sc', 'ee': 'ee',
+    'level': 'level', 'role': 'role', 'element': 'attribute',
+    'hero': 'name'
+}
