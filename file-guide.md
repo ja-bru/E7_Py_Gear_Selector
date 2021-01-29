@@ -10,7 +10,7 @@ nav_order: 5
 <br> Also see [Configuration](input_file_setup.html)
 <br>
 | File | Folder | Description |
-| ------- | ------- | ------- |
+|:------- |:-------:|:------- |
 | master_data.json | inp | File that must contains list of "items" and "heroes" as inputs for optimization.  This file must contain all equipments within the "items" section to use in optimization. |
 | Hero_Optimization_Notebook.ipynb | prog | Jupyter notebook for running the hero optimization |
 | Other_Useful_Features.ipynb | prog | Jupyter notebook for running other scripts (such as viewing hero stats) |
