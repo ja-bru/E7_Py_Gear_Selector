@@ -12,7 +12,7 @@ nav_order: 2
 
 #### Download the source code
 
-<img src="https://github.com/ja-bru/E7_Py_Gear_Selector/blob/gh-pages/_image/dl_source_code.png?raw-true" alt="source_code" width="250x">
+<img src="https://github.com/ja-bru/E7_Py_Gear_Selector/blob/gh-pages/_image/dl_source_code.png?raw=true" alt="source_code" width="250x">
 
 
 Once you've installed Anaconda (below), you can open Jupyter Notebook from the dashboard.  Find the folder you've downloaded the Py_Gear_Selector source code and open the file `Hero_Optimization_Notebook.ipynb` from the `E7_Py_Gear_Selector/prog/`
