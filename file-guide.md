@@ -19,8 +19,8 @@ nav_order: 5
 <tr><td> run_hero_opt.py </td><td> prog </td><td> CLI file to run simplified version of hero optimization (instead of using notebook) </td></tr>
 <tr><td> character_inputs.yaml </td><td> inp </td><td> Optional file to save and preload hero settings to improve/customize optimization results </td></tr>
 <tr><td> character_data.csv </td><td> inp </td><td> This contains the base hero stats for level 50 and 60 fully awakened heroes.  This file must contain the hero (with the same spelling) in order to run the optimization. </td></tr>
-<tr><td> gear_tiers.csv </td><td> inp </td><td> Contains hard-coded data on equipment stats based on level </td><td>
-  <tr><td> Other <code>prog/*.py</code> files </td><td> prog </td><td> These are the background files to run the program </td><td>
+<tr><td> gear_tiers.csv </td><td> inp </td><td> Contains hard-coded data on equipment stats based on level </td></tr>
+  <tr><td> Other <code>prog/*.py</code> files </td><td> prog </td><td> These are the background files to run the program </td></tr>
 </table>
 
 <br><b>Part 2:  Outputs </b>
