@@ -10,7 +10,7 @@ nav_order: 5
 <br> Also see [Configuration](input_file_setup.html)
 <br>
 | File | Folder | Description |
-| --- | --- | --- |
+| ------- | ------- | ------- |
 | master_data.json | inp | File that must contains list of "items" and "heroes" as inputs for optimization.  This file must contain all equipments within the "items" section to use in optimization. |
 | Hero_Optimization_Notebook.ipynb | prog | Jupyter notebook for running the hero optimization |
 | Other_Useful_Features.ipynb | prog | Jupyter notebook for running other scripts (such as viewing hero stats) |
@@ -25,7 +25,7 @@ nav_order: 5
 <br><b>Part 2:  Outputs </b>
 <br>
 | File | Folder | Description |
-| --- | --- | --- |
+| ----------- | ----------- | ----------- |
 | upd_items.json | outp | Saved data from optimization runs.  Outputs the updated version of `master_data['items']`.  Recommend copying this data to replace the items in `master_data.json` once you've regeared your heroes. |
 | gear_reco.csv | reco | Outputs the gear/heroes that have changed in the optimization runs |
 | equip_potential.csv | outp | Output from running `item_potential.py` that saved gear into `.csv` and provides efficiency ratings |
