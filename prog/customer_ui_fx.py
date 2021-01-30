@@ -26,14 +26,14 @@ def readInput( caption, default, timeout = 30):
 
 def set_widget4(Force_4Set, Speed, Attack, Counter, Lifesteal, Destruction, Rage, Revenge, Injury ):
     return
-
 def set_widget2(Hit, Critical, Defense, Health, Resist, Immunity, Unity, Penetration ):
     return
-
 def weight_widget(spd,atk,crit,cdmg,hp,defense,eff,res,ehp,dmg):
     return
+def stat_widget(Atk=False,HP=False,Def=False,AtkP=True,HPP=True,DefP=True,CChance=False,CDmg=False,Eff=False,Res=False,Spd=False):
+    return
 
-def run_widgets(hero_target,Force_4Set, char_list, st_setting, char):
+def run_widgets(hero_target, char_list, st_setting, char):
     widgets.IntSlider(min=-1,max=3,value=1)
     w = interactive(weight_widget,
                     spd = hero_target['SPD']['Weight'], atk = hero_target['ATK']['Weight'],
@@ -41,7 +41,7 @@ def run_widgets(hero_target,Force_4Set, char_list, st_setting, char):
                     hp = hero_target['HP']['Weight'], defense = hero_target['DEF']['Weight'],
                     eff = hero_target['EFF']['Weight'], res = hero_target['RES']['Weight'],
                     ehp = hero_target['EHP']['Weight'], dmg = hero_target['Dmg_Rating']['Weight'])
-    s4 = interactive(set_widget4,  Force_4Set = Force_4Set==1, Speed = 'Speed' in hero_target['include_sets'], Attack = 'Attack' in hero_target['include_sets'], Counter = 'Counter' in hero_target['include_sets'],  Lifesteal = 'Lifesteal' in hero_target['include_sets'],
+    s4 = interactive(set_widget4,  Force_4Set = hero_target['Force_4Set']==1, Speed = 'Speed' in hero_target['include_sets'], Attack = 'Attack' in hero_target['include_sets'], Counter = 'Counter' in hero_target['include_sets'],  Lifesteal = 'Lifesteal' in hero_target['include_sets'],
                      Destruction = 'Destruction' in hero_target['include_sets'], Rage = 'Rage' in hero_target['include_sets'], Revenge = 'Revenge' in hero_target['include_sets'], Injury = 'Injury' in hero_target['include_sets'])
     s2 = interactive(set_widget2, Hit = 'Hit' in hero_target['include_sets'], Critical = 'Critical' in hero_target['include_sets'], Defense = 'Defense' in hero_target['include_sets'], Health = 'Health' in hero_target['include_sets'],
                      Resist = 'Resist' in hero_target['include_sets'], Immunity = 'Immunity' in hero_target['include_sets'], Unity = 'Unity' in hero_target['include_sets'], Penetration = 'Penetration' in hero_target['include_sets'])
@@ -51,10 +51,19 @@ def run_widgets(hero_target,Force_4Set, char_list, st_setting, char):
     w3 = widgets.IntSlider(value= st_setting[1], min=0, max=30, step=1, description='GEAR_LIMIT:',
         disabled=False, continuous_update=False, orientation='horizontal', readout=True, readout_format='d')
     w4 = widgets.Checkbox(value= st_setting[2] ==1 , description="Keep gear currently equipped:")
-    return w,s4,s2,w1,w2,w3,w4
+    m3o = ['AtkP','HPP','DefP','CChance','CDmg','Atk','HP','Def']
+    m4o = ['AtkP','HPP','DefP','Eff','Res','Atk','HP','Def']
+    m5o = ['AtkP','HPP','DefP','Spd','Atk','HP','Def']
+    ms3 = widgets.SelectMultiple(options=(m3o), value=(m3o if st_setting[3]!=1 else m3o[:-3]), rows=8 )
+    ms4 = widgets.SelectMultiple(options=(m4o), value=(m4o if st_setting[3]!=1 else m4o[:-3]), rows=8 )
+    ms5 = widgets.SelectMultiple(options=(m5o), value=(m5o if st_setting[3]!=1 else m5o[:-3]), rows=8 )
+    ms_tuple = [ms3 , ms4, ms5]
+    return w,s4,s2,w1,w2,w3,w4,ms_tuple
 
-def update_settings(w0, s4, s2, hero_target):
+def update_settings(hero_target, w0, s4, s2, ms0):
     include_sets = []
+    hero_target['Force_4Set'] = 1 if s4.kwargs['Force_4Set'] else 0
+    hero_target['Main_Stats'] = [list(ms0[0].value),list(ms0[1].value),list(ms0[2].value)]
     for i in fx.set_4.Set_Nm.values:
         if s4.kwargs[i]: include_sets.extend([str(i)])
     for i in fx.set_2.Set_Nm.values:
@@ -138,10 +147,10 @@ def save_hero(df, gear_selected, char):
     return df
 
 def save_final_data(df):
-    df[~(df.reco=='')][['start_loc','hero','efficiency','rating','reco','Type','slot','set','level','rarity','enhance','mainStat','subStat1','subStat2','subStat3','subStat4']].to_csv('../reco/gear_reco.csv')
+    df[~(df.reco=='')][['start_loc','hero','efficiency','rating','reco','Type','slot','set','level','rarity','enhance','mainStat','subStat1','subStat2','subStat3','subStat4']].to_csv('../outp/gear_reco.csv')
     df['hero'] = np.where( df.reco!='', df['reco'], df['hero'])
     df.to_pickle('../outp/equip_potential.pkl')
     df = df.sort_values(by = ['hero','Type','efficiency','enhance'])
-    export2 = df[['efficiency','hero','enhance','slot','level','set','rarity','mainStat','subStat1','subStat2','subStat3','subStat4','id','p_id','locked']].to_dict('records')
+    export2 = df[['efficiency','hero','enhance','slot','level','set','rarity','mainStat','subStat1','subStat2','subStat3','subStat4','id','locked']].to_dict('records')
     with open('../outp/upd_items.json', 'w') as fp: json.dump(export2, fp)
     return

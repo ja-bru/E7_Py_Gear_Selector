@@ -1,15 +1,12 @@
 # #### SET UP
-
 import pandas as pd
 import numpy as np
 import math
 import itertools
 import setup as st
-from datetime import datetime
 import gear_ref_table as grt
 
 # ### PULL IN FIXED LOOKUP TABLES FOR GEAR
-
 gear_rating_lookup = grt.gear_rating_lookup.copy()
 grl = gear_rating_lookup.to_dict()
 gear_tier = pd.read_csv("../inp/gear_tiers.csv")
@@ -17,10 +14,10 @@ type_df = grt.type_df.copy()
 set_df = grt.set_df.copy()
 set_4 = set_df[['Set','Set_Nm','Set_Lg']][set_df.Set_Lg == 4]
 set_2 = set_df[['Set','Set_Nm','Set_Lg']][set_df.Set_Lg == 2]
-
 subs_cols = ['subStat1','subStat2','subStat3','subStat4']
 
-# ### FUNCTIONS
+# ******************************************
+# ### QA functions
 def verify_setup():
     print("Checking program configuration")
     if st.MANUAL_SELECTION != 1:  print("Automated optimization is set, all heroes will run in order without user input to select gear")
@@ -64,6 +61,7 @@ def verify_item_input(df):
     if (4 - df['grade'] + pwrup) < tot_pwr:
         check_error += 100
     return check_error
+
 def verify_main_stats(gear_lvl, enhance, main_type, main_val, gear_type):
     main_error = 0
     ##main type
@@ -80,30 +78,110 @@ def verify_main_stats(gear_lvl, enhance, main_type, main_val, gear_type):
         main_error += 1
     return main_error*10
 
+# ******************************************
+# ###### FILE CONVERSION
 def hero_json_to_df(chars, data):
     char_df = pd.read_csv('../inp/character_data.csv')
-    char_list = np.sort(char_df['Character'].unique())
+    char_list = np.sort(char_df[grt.e7api_map['hero']].unique())
     print("Missing hero stats in source file for:",[x for x in chars if x not in char_list])
+    data['heroes'] = clean_up_dictionary_input(data['heroes'], 'Artifact', 'BonusStats')
     df = pd.DataFrame( char_list , columns = ['Name'] )
     df2 = pd.DataFrame(data['heroes'])
     df = pd.merge(df,df2[['Name','Lvl','BonusStats']],how='left',on=['Name'])
     df['Lvl'] = df['Lvl'].fillna(st.MIN_LEVEL)
     df['Lvl'] = df['Lvl'].clip(lower=st.MIN_LEVEL)
-    df = df.merge(char_df, how='left', left_on = ['Name','Lvl'], right_on = ['Character','Level'])
-    if len(df['Character'][df['Atk'].isnull()]) > 0:
-        print("Error: Character data missing from source file", df['Name'][df['Atk'].isnull()].values)
+    df = df.merge(char_df, how='left', left_on = ['Name','Lvl'], right_on = [grt.e7api_map['hero'],grt.e7api_map['level']])
+    if len(df['Name'][df[grt.e7api_map['atk']].isnull()]) > 0:
+        print("Error: Character data missing from source file", df['Name'][df[grt.e7api_map['atk']].isnull()].values)
         exit()
     return df, char_list
 
 def item_json_to_df(data):
-    df = pd.DataFrame(data['items'])
-    df.rename(columns={'ability':'enhance'}, inplace=True) ##added this line for anyone using compeanansi OCR tool
-    df[subs_cols] = df[subs_cols].applymap(lambda x: [0,0] if x is np.nan else x)
-    #df = df.apply(lambda row: ocr_cleanup(row), axis=1)
+    #clean up formatted to increase success of raw input
+    data['items'] = clean_up_dictionary_input(data['items'], 'ability', 'enhance')
+    for sub in subs_cols:
+        data['items'] = clean_up_dictionary_input(data['items'], sub, ['',0])
+    #define target input columns and formatting
+    default_input_format =  {'hero': '','enhance': 0, 'slot': '', 'level': 0, 'set': '', 'rarity': '',
+                            'mainStat': ['X', 0], 'subStat1': ['X', 0], 'subStat2': ['X', 0], 'subStat3': ['X', 0], 'subStat4': ['X', 0],
+                            'id': '','locked': False}
+    data_list = [default_input_format]
+    data_list.extend(data['items'])
+    #convert to dataframe
+    df = pd.DataFrame(data_list, columns = default_input_format.keys())
+    df = df[1:]
     df['grade'] = df['rarity'].map(grt.r_map)
     df['Type'] = df['slot'].map(grt.t_map)
     return df
 
+def clean_up_dictionary_input(input_dict, key1, key2):
+    """Specific data cleanup to improves compatibility with compeanansi OCR output"""
+    if type(key2) == str:
+        for i in range(0,len(input_dict)):
+            if key1 in input_dict[i]:
+                input_dict[i][key2] = input_dict[i][key1]
+    elif type(key2) == list:
+        for i in range(0,len(input_dict)):
+            if key1 in input_dict[i]:
+                if type(input_dict[i][key1]) != list:
+                    input_dict[i][key1] = key2
+            else:
+                input_dict[i][key1] = key2
+    return input_dict.copy()
+
+# ******************************************
+# ####### START UP MESSAGES AND SET UP
+def startup_msg1(target_stats):
+    hero_order = target_stats['Hero_Order']
+    print("Heroes for optimization:", hero_order)
+    if st.NO_EQUIPPED_GEAR == 1:
+        print("No equipped gear will be included in optimization.")
+    else:
+        print("Gear on the following heroes is locked and cannot be stolen from another hero.", target_stats['Lock_Gear'])
+    print("Gear will be unlocked if new gear is equipped on that hero")
+    return hero_order
+
+def startup_msg2(df, lock_gear):
+    df['reco'] = np.where( df['hero'].isin(lock_gear) , df['hero'], df['reco'] )
+    print("Total # of items loaded:", len(df) )
+    if st.NO_EQUIPPED_GEAR == 1: print("Unequipped gear will be used. # of items: ", len(df[(df.hero == np.nan) | (df.hero == '')]) )
+    elif len(lock_gear) > 0:  print("Unequipped and unlocked gear will be used.  # of items", len(df[df.reco == '']) )
+    else:  print("All gear will be used.")
+    return df
+
+def start_hero(char, target_stats):
+    print("Hero: ", char) #, "Level ", df_hero[df_hero.Name == char]['Lvl'].values)
+    if char in target_stats:
+        build = char
+        print("Customer character build")
+    elif char in target_stats["Type"]:
+        build = target_stats['Type'][char]
+        print("Character assigned template build:", build)
+    else:
+        print("No build assigned to this character")
+        build = 'General'
+    print("Build type: ", build, "Stat priority: ", target_stats[build]['Prio'])
+
+    input_sets = target_stats[build]['input_sets']
+    exclude_sets = target_stats[build]['exclude_sets']
+    include_sets = gen_input_sets(input_sets, exclude_sets)
+    print("Sets to include for this character:", include_sets)
+    target_stats[build]['include_sets'] = include_sets.tolist()
+    try:
+        if len(target_stats[build]['Force_4Set'])==1: pass
+    except:
+        if any(item in include_sets for item in set_4.Set_Nm.values) == True:
+            target_stats[build]['Force_4Set'] = 1
+            print("Looking for combinations using a four piece set only.")
+            print("To include combinations of three 2 gear sets, set FORCE_4SET = 0")
+        else:
+            target_stats[build]['Force_4Set'] = 0
+            print("Accepts all set combinations (4set+2set or 3x2set)")
+    return char, target_stats[build]
+
+# ******************************************
+# ####### ITEM POTENTIAL FUNCTIONS
+# generates individual gear ratings and substat efficiency
 def gear_stats(df):
     newcols = {}
     for code in gear_rating_lookup.code.values:
@@ -118,7 +196,7 @@ def gear_stats(df):
         #pd.concat(df[stat] , axis=1)
     return pd.concat([df, pd.DataFrame(newcols, index=df.index)], axis=1)
 
-## Item Potential Function generates individual gear ratings and substat efficiency
+## Item Potential Function
 def item_potential(df):
     GR = 0
     spd_ind = 0
@@ -159,12 +237,27 @@ def spd_potential(p,g,s):  ## p = power ups remaining, item rarity, if speed is 
     v2 = np.where( s==1 , max(min(p,p-g),np.where(p>0,1,0)),0 )
     return (v1+v2)
 
-def set_combo(item_df, hero_name, l4, l2):
-    # ### EVERY COMBINATION OF UNBROKEN SETS
-    gear_comb_dict = {}
-    temp_df = item_df[ (item_df.reco.isnull()) | (item_df.reco == '') | (item_df.reco == hero_name)].copy()
+# ******************************************
+# ####### GENERATE COMBINATIONS TO PRODUCE COMPLETE SETS
+# ### GET COMBINATIONS OF EACH SET
+L = [0,1,2,3,4,5]
+l4 = [",".join(map(str, comb)) for comb in itertools.combinations(L, 4)]
+l2 = [",".join(map(str, comb)) for comb in itertools.combinations(L, 2)]
+
+def equip_optimizer_input(item_df, hero_name, sets, list_main_stats = []):
+    temp_df = item_df.copy()
+    ##unlocked gear only
+    temp_df = temp_df[ (temp_df.reco.isnull()) | (temp_df.reco == '') | (temp_df.reco == hero_name)]
     if st.NO_EQUIPPED_GEAR == 1:
         temp_df = temp_df[ (temp_df.hero == '') | (temp_df.hero.isnull()) | (temp_df.hero == hero_name) ]
+    ##specified sets
+    temp_df = temp_df[ (temp_df.set.isin(sets)) ]
+    ##remove equip without main stat
+    if len(list_main_stats) > 0:
+        for i in range(0,3):
+            if len(list_main_stats[i])>0:
+                temp_df = temp_df.drop(temp_df[(temp_df.Type == i+3)&~(temp_df.main_tp.isin(list_main_stats[i]))].index)
+    ##sort by
     temp_df.sort_values(by = ['rating'], ascending = False, inplace=True)
     if st.KEEP_CURR_GEAR == 1:
         temp_slots = temp_df[(temp_df.hero == hero_name)].Type.values
@@ -179,11 +272,14 @@ def set_combo(item_df, hero_name, l4, l2):
         temp_df = temp_df.append([temp_df_c,temp_df_d])
         temp_df = temp_df.drop_duplicates(['id'])
         temp_df.reset_index(inplace=True)
+    return temp_df
 
-    ##iterate through set gear combinations by set
+def set_combo(item_df, l4, l2):
+    gear_comb_dict = {}
+    ##iterate through set gear combinations for two piece sets
     for set_nm in set_2.Set_Nm:
         temp_dict = {}
-        temp_df2 = temp_df[ (temp_df.set == set_nm) ]
+        temp_df2 = item_df[ (item_df.set == set_nm) ]
         for i in range(0,len(l2)):
             temp_l = list(set(l2[i]))
             temp_l.remove(',')
@@ -201,10 +297,10 @@ def set_combo(item_df, hero_name, l4, l2):
             app = [ [set_nm], temp_l, itr ]
             temp_dict[l4[i]] = itr
         gear_comb_dict[set_nm] = temp_dict
-
+    ##iterate through set gear combinations for four piece sets
     for set_nm in set_4.Set_Nm:
         temp_dict = {}
-        temp_df2 = temp_df[ (temp_df.set == set_nm) ]
+        temp_df2 = item_df[ (item_df.set == set_nm) ]
         for i in range(0,len(l4)):
             temp_l = list(set(l4[i]))
             temp_l.remove(',')
@@ -216,6 +312,113 @@ def set_combo(item_df, hero_name, l4, l2):
             temp_dict[l4[i]] = itr
         gear_comb_dict[set_nm] = temp_dict
     return gear_comb_dict
+
+def l4comb(l4,l2):
+    l4_comb = []
+    zz = 0
+    for i in range(0,len(l4)):
+        for j in range(0,len(l2)):
+            x4 = list(set(l4[i]))
+            x4.remove(',')
+            x2 = list(set(l2[j]))
+            x2.remove(',')
+            x6 = x2.copy()
+            x6.extend(x4)
+            if len(np.unique(x6)) == 6:
+                zz += 1
+                add_list = [l4[i],l2[j]]
+                l4_comb.append(add_list)
+    return l4_comb
+
+def l2comb(l2):
+    l2_comb = []
+    zz = 0
+    for i in range(0,5):
+        for j in range(5,len(l2)):
+            for k in range(5,len(l2)):
+                x21 = sorted(list(set(l2[i])))
+                x21.remove(',')
+                x22 = sorted(list(set(l2[j])))
+                x22.remove(',')
+                x23 = sorted(list(set(l2[k])))
+                x23.remove(',')
+                x6 = x21.copy()
+                x6.extend(x22)
+                x6.extend(x23)
+                if (x21[0]<x22[0]) & (x22[0]<x23[0]) & (len(np.unique(x6))==6):
+                    zz += 1
+                    add_list = [l2[i],l2[j],l2[k]]
+                    l2_comb.append(add_list)
+    return l2_comb
+
+# ### ALL GEAR COMBINATIONS WHERE UNBROKEN
+def set_combination_iterate(gear_comb_dict, set4_list, set2_list, FORCE_4SET):
+    ##df columns
+    Itr_Sets = []
+    Set_1 = []
+    Set_2 = []
+    Set_3 = []
+    Gear = []
+    Gear2 = []
+    Complete = []
+    l4_comb = l4comb(l4,l2)
+    l2_comb = l2comb(l2)
+    for set_nm4 in set4_list:
+        for set_nm2 in set2_list:
+            for a in range(0,len(l4_comb)):
+                code4 = l4_comb[a][0]
+                code2 = l4_comb[a][1]
+                g4_set = gear_comb_dict[set_nm4][code4]
+                g2_set = gear_comb_dict[set_nm2][code2]
+                Itr_Sets.append([set_nm4,set_nm2])
+                itr = list(itertools.product( g4_set, g2_set ) )
+                Set_1.extend([set_nm4]*len(itr))
+                Set_2.extend([set_nm2]*len(itr))
+                Set_3.extend([None]*len(itr))
+                Gear.extend(itr)
+                Complete.extend([1]*len(itr))
+    if FORCE_4SET != 1:
+        for set_nm in itertools.combinations(set2_list, 3):
+            for a in range(0,len(l2_comb)):
+                code1 = l2_comb[a][0]
+                code2 = l2_comb[a][1]
+                code3 = l2_comb[a][2]
+                g2_set1 = gear_comb_dict[set_nm[0]][code1]
+                g2_set2 = gear_comb_dict[set_nm[1]][code2]
+                g2_set3 = gear_comb_dict[set_nm[2]][code3]
+                Itr_Sets.append([set_nm[0],set_nm[1],set_nm[2]])
+                itr = list(itertools.product( g2_set1, g2_set2, g2_set3 ) )
+                Set_1.extend([set_nm[0]]*len(itr))
+                Set_2.extend([set_nm[1]]*len(itr))
+                Set_3.extend([set_nm[2]]*len(itr))
+                Gear.extend(itr)
+                Complete.extend([1] * len(itr))
+    print('Progress: Step 1/4 Complete.  Number of combinations found', len(itr))
+    print('For processing efficency, I would aim to keep combinations less than 1 million')
+    return list(zip(Set_1,Set_2,Set_3,Complete,Gear))
+
+def final_gear_combos(sc_output, char):
+    sc_df = pd.DataFrame(sc_output, columns =['Set_1', 'Set_2', 'Set_3','Complete','Gear'])
+    sc_df['gear_list'] = sc_df.apply(lambda row: gear_split(row) , axis=1)
+    sc_df[['0','1','2','3','4','5']] = pd.DataFrame(sc_df.gear_list.values.tolist(), index= sc_df.index)
+    sc_df = sc_df.drop_duplicates(['0','1','2','3','4','5'])
+    current_gear = pd.DataFrame(columns = ['Set_1', 'Set_2', 'Set_3', 'Complete', 'Gear', 'gear_list', '0', '1', '2', '3', '4', '5' ], index = ['0'])
+    try:
+        nix=0
+        for gid in range(0,6):
+            current_gear[str(gid)] = df_items[(df_items.hero == char) & (df_items.Type == gid)][['id']].values
+            val = df_items[(df_items.hero == char) & (df_items.Type == gid)][['reco']].values
+            if (val > '') & (val!=char): nix = 1
+        current_gear = get_set_bonus(current_gear, df_items)
+        if nix==1: current_gear['Complete'] = 'PREVIOUS'
+        elif nix==0: current_gear['Complete'] = 'CURRENT'
+        sc_df = sc_df.append(current_gear)
+        sc_df = sc_df.reset_index()
+        hero_with_gear = 1
+    except:
+        hero_with_gear = 0
+    print('Progress: Step 2/4 Complete.  Number of unique combinations for optimization', len(sc_df[sc_df.Complete!='PREVIOUS']) )
+    return sc_df, hero_with_gear
 
 def gear_split(df):
     ##extract gear ids from tuples produced in sc.set_combination_iterate
@@ -262,12 +465,16 @@ def gen_input_sets(include, exclude, autofill = 0):
         elif (x < 6):
             include.extend(set_df[(set_df.Set_Lg == 2)&(~set_df.Set_Nm.isin(exclude))&(~set_df.Set_Nm.isin(include))]['Set_Nm'].values)
             include.extend(set_df[(set_df.Set_Lg == 4)&(~set_df.Set_Nm.isin(exclude))&(~set_df.Set_Nm.isin(include))]['Set_Nm'].values)
-
     return include
 
+# ******************************************
+# ####### CALCULATE HERO STATS AND RECOMMEND OPTIMAL SETS
 def get_set_bonus(df, item_df):
     #get data for set combinations
-    gears = df[['0','1','2','3','4','5']].values[0]
+    if len(df) > 1:
+        gears = df[['0','1','2','3','4','5']].values
+    else:
+        gears = df[['0','1','2','3','4','5']].values[0]
     set_stats = item_df[item_df.id.isin(gears)].groupby(['set']).count()[['id']]
     set_stats = set_df.merge(set_stats, how='inner', left_on='Set_Nm' , right_on='set')
     set_stats['Mult'] = (set_stats.id / set_stats.Set_Lg).astype(int)
@@ -290,7 +497,6 @@ def enhance_mult(x):
     return z
 
 def set_sum(df):
-    # print("started function set sum:   ", datetime.now())
     setst_df = df.copy()
     for stat in np.unique(set_df[set_df.Bonus_Stat != 'NA'].Bonus_Stat.values):
         mult = [0]*len(setst_df)
@@ -303,7 +509,6 @@ def set_sum(df):
     return setst_df
 
 def subst_sum(df, item_df):
-    # print("started function subst sum:   ", datetime.now())
     subst_cols = list(gear_rating_lookup.stat)
     subst_cols.extend(['id','GR'])
     suff_cols = ['0','1','2','3','4','5']
@@ -324,7 +529,6 @@ def subst_sum(df, item_df):
     return subst_df
 
 def mainst_sum(df, item_df):
-    # print("started function mainst sum:   ", datetime.now())
     mainst_df = df.copy()
     mainst_cols = ['id','main_tp','main_val','level','enhance']
     for subst in mainst_cols:
@@ -356,52 +560,103 @@ def bonus_eqp_sum(hero_df):
         except: bonus_eqp_df[stat] = 0
     return bonus_eqp_df
 
-def get_combo_stats(df, df_hero, mainst_df, subst_df, setst_df, hero_ee, char, target_stats):#, mainst_df, subst_df, setst_df):
-    df['Char'] = [char] * len(df)
-    df['ATK'] =  (df_hero[df_hero.Name == char]['Atk'].values[0]   *(100+mainst_df['ATK%']+subst_df['ATK%']+setst_df['ATK']+hero_ee['AtkP'])/100  +mainst_df['ATK']+subst_df['ATK']+hero_ee['Atk']).astype(int)
-    df['HP'] =   (df_hero[df_hero.Name == char]['HP'].values[0]    *(100+mainst_df['HP%']+subst_df['HP%']+setst_df['HP']+hero_ee['HPP'])/100   +mainst_df['HP'] +subst_df['HP']+hero_ee['HP']).astype(int)
-    df['DEF'] =  (df_hero[df_hero.Name == char]['Def'].values[0]   *(100+mainst_df['DEF%']+subst_df['DEF%']+setst_df['DEF']+hero_ee['DefP'])/100 +mainst_df['DEF'] +subst_df['DEF']+hero_ee['Def']).astype(int)
-    df['SPD'] =  (df_hero[df_hero.Name == char]['Speed'].values[0] * ((100+setst_df['SPD'].values)/100) +mainst_df['SPD']+subst_df['SPD']+hero_ee['Spd'] ).astype(int)
-    df['CRIT'] = np.minimum((df_hero[df_hero.Name == char]['Crit Rate'].values[0] +mainst_df['CRIT']+subst_df['CRIT']+setst_df['CRIT']+hero_ee['CChance']).astype(int),100)
-    df['CDMG'] = (df_hero[df_hero.Name == char]['Crit Dmg'].values[0]  +mainst_df['CDMG']+subst_df['CDMG']+setst_df['CDMG']+hero_ee['CDmg']).astype(int)
-    df['EFF'] =  np.minimum((df_hero[df_hero.Name == char]['Effectiveness'].values[0] +mainst_df['EFF']+subst_df['EFF']+setst_df['EFF']+hero_ee['Eff']).astype(int),100)
-    df['RES'] =  np.minimum((df_hero[df_hero.Name == char]['Eff Resist'].values[0]    +mainst_df['RES']+subst_df['RES']+setst_df['RES']+hero_ee['Res']).astype(int),100)
-
+def pull_hero_stat_format(df_flag, stat, input_set):
+    if df_flag == 1:
+        stat_value = input_set[stat].values
+    else:
+        stat_value = input_set[stat].values[0]
+    return stat_value
+def get_combo_stats(df, df_hero, mainst_df, subst_df, setst_df, hero_ee, char, target_stats):
+    if char == 'all':
+        df['Char'] = df_hero['Name']
+        df_hero_stat = df_hero
+    else:
+        df['Char'] = [char] * len(df)
+        df_hero_stat = df_hero[df_hero.Name == char]
+    if len(df) > 1: df_flag = 1
+    else: df_flag = 0
+    df['ATK'] =  (pull_hero_stat_format(df_flag, grt.e7api_map['atk'], df_hero_stat)   *(100+mainst_df['ATK%']+subst_df['ATK%']+setst_df['ATK']+hero_ee['AtkP'])/100  +mainst_df['ATK']+subst_df['ATK']+hero_ee['Atk']).astype(int)
+    df['HP'] =   (pull_hero_stat_format(df_flag, grt.e7api_map['hp'], df_hero_stat)   *(100+mainst_df['HP%']+subst_df['HP%']+setst_df['HP']+hero_ee['HPP'])/100   +mainst_df['HP'] +subst_df['HP']+hero_ee['HP']).astype(int)
+    df['DEF'] =  (pull_hero_stat_format(df_flag, grt.e7api_map['def'], df_hero_stat)   *(100+mainst_df['DEF%']+subst_df['DEF%']+setst_df['DEF']+hero_ee['DefP'])/100 +mainst_df['DEF'] +subst_df['DEF']+hero_ee['Def']).astype(int)
+    df['SPD'] =  (pull_hero_stat_format(df_flag, grt.e7api_map['spd'], df_hero_stat) * ((100+setst_df['SPD'].values)/100) +mainst_df['SPD']+subst_df['SPD']+hero_ee['Spd'] ).astype(int)
+    df['CRIT'] = np.minimum((pull_hero_stat_format(df_flag, grt.e7api_map['crit'], df_hero_stat) +mainst_df['CRIT']+subst_df['CRIT']+setst_df['CRIT']+hero_ee['CChance']).astype(int),100)
+    df['CDMG'] = (pull_hero_stat_format(df_flag, grt.e7api_map['cdmg'], df_hero_stat)  +mainst_df['CDMG']+subst_df['CDMG']+setst_df['CDMG']+hero_ee['CDmg']).astype(int)
+    df['EFF'] =  np.minimum((pull_hero_stat_format(df_flag, grt.e7api_map['eff'], df_hero_stat) +mainst_df['EFF']+subst_df['EFF']+setst_df['EFF']+hero_ee['Eff']).astype(int),100)
+    df['RES'] =  np.minimum((pull_hero_stat_format(df_flag, grt.e7api_map['res'], df_hero_stat)    +mainst_df['RES']+subst_df['RES']+setst_df['RES']+hero_ee['Res']).astype(int),100)
     ### additional columns for prioritization
-        #ratings
-    df['Dmg_Rating'] = ((df['ATK']/ 2500 \
-            * (df['CRIT']/100 * df['CDMG']/100 + (100-df['CRIT'])/100) \
-            * df['SPD'] / 150)*10).astype(int)
-
     # df['CATK'] = (df['ATK'] * df['CDMG'] / 100).astype(int)
-
-    df['EHP'] = (df['HP'] * (1 + df['DEF']/300) / 100).astype(int)
-
+    # df['CMult'] = df['CRIT'] / 100 * df['CDMG'] / 100
     # df['WR'] = ((df['ATK']/1500 + df['SPD']/100 + df['CRIT']/30 + df['CDMG']/150 \
     #             + df['HP']/5000 + df['DEF']/400 + df['EFF']/30 + df['RES']/30)*10).astype(int)
-
-    df['PI'] = (df['ATK']/df_hero[df_hero.Name == char]['Atk'].values[0]/grl['max_t7'][0] \
-                + df['SPD']/df_hero[df_hero.Name == char]['Speed'].values[0]/grl['max_t7'][2] \
-                + (df['CRIT'] - df_hero[df_hero.Name == char]['Crit Rate'].values[0])/100/grl['max_t7'][3] \
-                + (df['CDMG']-df_hero[df_hero.Name == char]['Crit Dmg'].values[0])/100/grl['max_t7'][4] \
-                + df['HP']/df_hero[df_hero.Name == char]['HP'].values[0]/grl['max_t7'][5] \
-                + df['DEF']/df_hero[df_hero.Name == char]['Def'].values[0]/grl['max_t7'][7] \
-                + (df['EFF'] - df_hero[df_hero.Name == char]['Effectiveness'].values[0])/100/grl['max_t7'][9] \
-                + (df['RES'] - df_hero[df_hero.Name == char]['Eff Resist'].values[0])/100/grl['max_t7'][10]).astype(int)
-
-    df['GR'] = subst_df['GR']/6
-
-    df['WW'] = round(df['ATK']/df_hero[df_hero.Name == char]['Atk'].values[0]/grl['max_t7'][0]*target_stats['ATK']['Weight'] \
-                + df['SPD']/df_hero[df_hero.Name == char]['Speed'].values[0]/grl['max_t7'][2]*target_stats['SPD']['Weight'] \
-                + (df['CRIT']-df_hero[df_hero.Name == char]['Crit Rate'].values[0])/100/grl['max_t7'][3]*target_stats['CRIT']['Weight'] \
-                + (df['CDMG']-df_hero[df_hero.Name == char]['Crit Dmg'].values[0])/100/grl['max_t7'][4]*target_stats['CDMG']['Weight'] \
-                + df['HP']/df_hero[df_hero.Name == char]['HP'].values[0]/grl['max_t7'][5]*target_stats['HP']['Weight'] \
-                + df['DEF']/df_hero[df_hero.Name == char]['Def'].values[0]/grl['max_t7'][7]*target_stats['DEF']['Weight'] \
-                + (df['EFF']-df_hero[df_hero.Name == char]['Effectiveness'].values[0])/100/grl['max_t7'][9]*target_stats['EFF']['Weight'] \
-                + (df['RES']-df_hero[df_hero.Name == char]['Eff Resist'].values[0])/100/grl['max_t7'][10]*target_stats['RES']['Weight'] , 2)
-
     cp1 = round( ((df['ATK']*1.6 + df['ATK']*1.6*df['CRIT']*df['CDMG']/10000) * (1+(df['SPD']-45)*0.02) + df['HP'] + df['DEF']*9.3) * (1 + (df['RES']+df['EFF']) / 400) , 0)
-    cp2 = 1 + 0.08 * df_hero[df_hero.Name == char]['SC'].values[0] + 0.02 * df_hero[df_hero.Name == char]['EE'].values[0]
+    cp2 = 1 + 0.08 * df_hero_stat[grt.e7api_map['sc']].values[0] + 0.02 * df_hero_stat[grt.e7api_map['ee']].values[0]
     df['CP'] = round(cp1 * cp2,0)
-
+    df['Dmg_Rating'] = ((df['ATK']/ 2500 \
+                    * (df['CRIT']/100 * df['CDMG']/100 + (100-df['CRIT'])/100) \
+                    * df['SPD'] / 150)*10).astype(int)
+    df['EHP'] = (df['HP'] * (1 + df['DEF']/300) / 100).astype(int)
+    df['PI'] = (df['ATK']/df_hero_stat[grt.e7api_map['atk']].values[0]/grl['max_t7'][0] \
+                + df['SPD']/df_hero_stat[grt.e7api_map['spd']].values[0]/grl['max_t7'][2] \
+                + (df['CRIT'] - df_hero_stat[grt.e7api_map['crit']].values[0])/100/grl['max_t7'][3] \
+                + (df['CDMG']-df_hero_stat[grt.e7api_map['cdmg']].values[0])/100/grl['max_t7'][4] \
+                + df['HP']/df_hero_stat[grt.e7api_map['hp']].values[0]/grl['max_t7'][5] \
+                + df['DEF']/df_hero_stat[grt.e7api_map['def']].values[0]/grl['max_t7'][7] \
+                + (df['EFF'] - df_hero_stat[grt.e7api_map['eff']].values[0])/100/grl['max_t7'][9] \
+                + (df['RES'] - df_hero_stat[grt.e7api_map['res']].values[0])/100/grl['max_t7'][10]).astype(int)
+    df['GR'] = subst_df['GR']/6
+    df['WW'] = round(df['ATK']/df_hero_stat[grt.e7api_map['atk']].values[0]/grl['max_t7'][0]*target_stats['ATK']['Weight'] \
+                + df['SPD']/df_hero_stat[grt.e7api_map['spd']].values[0]/grl['max_t7'][2]*target_stats['SPD']['Weight'] \
+                + (df['CRIT']-df_hero_stat[grt.e7api_map['crit']].values[0])/100/grl['max_t7'][3]*target_stats['CRIT']['Weight'] \
+                + (df['CDMG']-df_hero_stat[grt.e7api_map['cdmg']].values[0])/100/grl['max_t7'][4]*target_stats['CDMG']['Weight'] \
+                + df['HP']/df_hero_stat[grt.e7api_map['hp']].values[0]/grl['max_t7'][5]*target_stats['HP']['Weight'] \
+                + df['DEF']/df_hero_stat[grt.e7api_map['def']].values[0]/grl['max_t7'][7]*target_stats['DEF']['Weight'] \
+                + (df['EFF']-df_hero_stat[grt.e7api_map['eff']].values[0])/100/grl['max_t7'][9]*target_stats['EFF']['Weight'] \
+                + (df['RES']-df_hero_stat[grt.e7api_map['res']].values[0])/100/grl['max_t7'][10]*target_stats['RES']['Weight'] , 2)
+    df['Element'] = df_hero_stat[grt.e7api_map['element']]
+    df['Role'] = df_hero_stat[grt.e7api_map['role']]
     return df
+
+def run_stat_reco(output, hero_with_gear, hero_target):
+    if hero_with_gear == 1:
+        choice_df = output.iloc[-1:,:].copy()
+        output = output.sort_values(by = [st.primary_sort_stat], ascending = False )  ## faster than inplace
+    else:
+        output = output.sort_values(by = [st.primary_sort_stat], ascending = False )  ## faster than inplace
+        choice_df = output.iloc[:1,:].copy()
+    ## regular process
+    output2 = output.copy()
+    for stat in set_df[set_df.Bonus_Stat != 'NA'].Bonus_Stat.values:
+        output2.drop( output2[(output2[stat]).astype(int) < hero_target[stat]['Min']].index, inplace=True)
+        output2.drop( output2[(output2[stat]).astype(int) > hero_target[stat]['Max']].index, inplace=True)
+    print("Progress: Step 3/4 Complete.  The number of combinations available with stats in specified range is: ",len(output2))
+    if len(output2)==0:
+        output2 = output.copy()
+        print("Since no combinations meet criteria, best alternative combinations will be shown based on desired stat weighting.")
+    ## record high stat options to output for manual selection dataset
+    choice_df = choice_df.append(output.iloc[:3,:])
+    choice_df = choice_df.append(output2.sort_values(by = [st.primary_sort_stat], ascending = False ).iloc[:3,:] )
+    try:
+        for STAT in np.unique(hero_target['Prio']):
+            choice_df = choice_df.append(output.sort_values(by = STAT, ascending = False ).iloc[:3,:] )
+            choice_df = choice_df.append(output2.sort_values(by = STAT, ascending = False ).iloc[:3,:] )
+    except: pass
+    ## look for sets with top priority stats and get recommended output
+    try:
+        for i in range(0,len(hero_target['Prio'])):
+            target = hero_target['Prio'][i]
+            cut_off = output2[target].quantile(0.9)
+            output2 = output2[output2[target] >= cut_off ]
+    except: pass
+    print("combinations after prio sortings ", len(output2) )
+    idx_reco = output2.iloc[[0]].index.values[0]
+    ## add final groomed options to output for manual selection dataset
+    choice_df = choice_df.append(output2.sort_values(by = [st.primary_sort_stat], ascending = False ).iloc[:3,:] )
+    choice_df = choice_df.append(output2[(output2.Set_1.isin(['Unity','Immunity','Penetration'])) | (output2.Set_2.isin(['Unity','Immunity'])) | \
+            (output2.Set_3.isin(['Unity','Immunity']))].sort_values(by = [st.primary_sort_stat], ascending = False ).iloc[:3,:] )
+    choice_df = choice_df.append(output2[(output2.Set_1.isin(['Counter','Lifesteal','Rage','Injury','Revenge']))].sort_values(by = [st.primary_sort_stat], ascending = False ).iloc[:3,:] )
+    try:
+        for STAT in np.unique(hero_target['Prio']):
+            choice_df = choice_df.append(output2.sort_values(by = STAT, ascending = False ).iloc[:3,:] )
+    except: pass
+    choice_df = choice_df.drop(axis = 1, columns = ['gear_list','Gear']).drop_duplicates()
+    return idx_reco, choice_df
