@@ -167,14 +167,17 @@ def start_hero(char, target_stats):
     include_sets = gen_input_sets(input_sets, exclude_sets)
     print("Sets to include for this character:", include_sets)
     target_stats[build]['include_sets'] = include_sets.tolist()
-    if any(item in include_sets for item in set_4.Set_Nm.values) == True:
-        FORCE_4SET = 1
-        print("Looking for combinations using a four piece set only.")
-        print("To include combinations of three 2 gear sets, set FORCE_4SET = 0")
-    else:
-        FORCE_4SET = 0
-        print("Accepts all set combinations (4set+2set or 3x2set)")
-    return FORCE_4SET, char, target_stats[build]
+    try:
+        if len(target_stats[build]['Force_4Set'])==1: pass
+    except:
+        if any(item in include_sets for item in set_4.Set_Nm.values) == True:
+            target_stats[build]['Force_4Set'] = 1
+            print("Looking for combinations using a four piece set only.")
+            print("To include combinations of three 2 gear sets, set FORCE_4SET = 0")
+        else:
+            target_stats[build]['Force_4Set'] = 0
+            print("Accepts all set combinations (4set+2set or 3x2set)")
+    return char, target_stats[build]
 
 # ******************************************
 # ####### ITEM POTENTIAL FUNCTIONS
@@ -241,12 +244,20 @@ L = [0,1,2,3,4,5]
 l4 = [",".join(map(str, comb)) for comb in itertools.combinations(L, 4)]
 l2 = [",".join(map(str, comb)) for comb in itertools.combinations(L, 2)]
 
-def set_combo(item_df, hero_name, l4, l2):
-    # ### EVERY COMBINATION OF UNBROKEN SETS
-    gear_comb_dict = {}
-    temp_df = item_df[ (item_df.reco.isnull()) | (item_df.reco == '') | (item_df.reco == hero_name)].copy()
+def equip_optimizer_input(item_df, hero_name, sets, list_main_stats = []):
+    temp_df = item_df.copy()
+    ##unlocked gear only
+    temp_df = temp_df[ (temp_df.reco.isnull()) | (temp_df.reco == '') | (temp_df.reco == hero_name)]
     if st.NO_EQUIPPED_GEAR == 1:
         temp_df = temp_df[ (temp_df.hero == '') | (temp_df.hero.isnull()) | (temp_df.hero == hero_name) ]
+    ##specified sets
+    temp_df = temp_df[ (temp_df.set.isin(sets)) ]
+    ##remove equip without main stat
+    if len(list_main_stats) > 0:
+        for i in range(0,3):
+            if len(list_main_stats[i])>0:
+                temp_df = temp_df.drop(temp_df[(temp_df.Type == i+3)&~(temp_df.main_tp.isin(list_main_stats[i]))].index)
+    ##sort by
     temp_df.sort_values(by = ['rating'], ascending = False, inplace=True)
     if st.KEEP_CURR_GEAR == 1:
         temp_slots = temp_df[(temp_df.hero == hero_name)].Type.values
@@ -261,10 +272,14 @@ def set_combo(item_df, hero_name, l4, l2):
         temp_df = temp_df.append([temp_df_c,temp_df_d])
         temp_df = temp_df.drop_duplicates(['id'])
         temp_df.reset_index(inplace=True)
+    return temp_df
+
+def set_combo(item_df, l4, l2):
+    gear_comb_dict = {}
     ##iterate through set gear combinations for two piece sets
     for set_nm in set_2.Set_Nm:
         temp_dict = {}
-        temp_df2 = temp_df[ (temp_df.set == set_nm) ]
+        temp_df2 = item_df[ (item_df.set == set_nm) ]
         for i in range(0,len(l2)):
             temp_l = list(set(l2[i]))
             temp_l.remove(',')
@@ -285,7 +300,7 @@ def set_combo(item_df, hero_name, l4, l2):
     ##iterate through set gear combinations for four piece sets
     for set_nm in set_4.Set_Nm:
         temp_dict = {}
-        temp_df2 = temp_df[ (temp_df.set == set_nm) ]
+        temp_df2 = item_df[ (item_df.set == set_nm) ]
         for i in range(0,len(l4)):
             temp_l = list(set(l4[i]))
             temp_l.remove(',')
@@ -378,6 +393,8 @@ def set_combination_iterate(gear_comb_dict, set4_list, set2_list, FORCE_4SET):
                 Set_3.extend([set_nm[2]]*len(itr))
                 Gear.extend(itr)
                 Complete.extend([1] * len(itr))
+    print('Progress: Step 1/4 Complete.  Number of combinations found', len(sc_output), "   ", datetime.now())
+    print('For processing efficency, I would aim to keep combinations less than 1 million')
     return list(zip(Set_1,Set_2,Set_3,Complete,Gear))
 
 def final_gear_combos(sc_output, char):
@@ -400,6 +417,7 @@ def final_gear_combos(sc_output, char):
         hero_with_gear = 1
     except:
         hero_with_gear = 0
+    print('Progress: Step 2/4 Complete.  Number of unique combinations for optimization', len(sc_df[sc_df.Complete!='PREVIOUS']) )
     return sc_df, hero_with_gear
 
 def gear_split(df):
@@ -599,7 +617,6 @@ def get_combo_stats(df, df_hero, mainst_df, subst_df, setst_df, hero_ee, char, t
     return df
 
 def run_stat_reco(output, hero_with_gear, hero_target):
-    print('Progress: Step 2/4 Complete.  Number of unique combinations for optimization', len(output[output.Complete!='PREVIOUS']) )
     if hero_with_gear == 1:
         choice_df = output.iloc[-1:,:].copy()
         output = output.sort_values(by = [st.primary_sort_stat], ascending = False )  ## faster than inplace

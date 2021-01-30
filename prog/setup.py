@@ -18,6 +18,7 @@ MIN_LEVEL = 50          ## Default Hero level of either 50 or 60 for stat calcul
 GEAR_ENHANCE = 12         ## Enhance gear to minimum level for stat selection/optimization
 FLAT_SUB = 0.8          ## Weight flat stat values in substats {range 0.0-1.0, default:0.8}
 FLAT_MAIN = 0.5         ## Weight value attributed to [Necklace, Ring, Boots] with flat main stats {range 0.0-1.0, default:0.5}
+IGNORE_FLAT_MAIN_STATS = 0  ##Set to 1 to exclude gear with flat main stats in Necklace, Ring, Boots
     ## Note, although users typically prefer scaled % stats to flat stats, Epic Seven has balanced flat stats to be quite useful for many heroes.
     ## For example: LVL60 Mascot Hazel flat attack stats will give better healing than attack %
     ## Heroes like Violet can benefit from flat defense stats over Def% (but an HP% mainstat will be much better than Def flat mainstat)
