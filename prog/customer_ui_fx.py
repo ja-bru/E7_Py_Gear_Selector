@@ -147,7 +147,7 @@ def save_hero(df, gear_selected, char):
     return df
 
 def save_final_data(df):
-    df[~(df.reco=='')][['start_loc','hero','efficiency','rating','reco','Type','slot','set','level','rarity','enhance','mainStat','subStat1','subStat2','subStat3','subStat4']].to_csv('../reco/gear_reco.csv')
+    df[~(df.reco=='')][['start_loc','hero','efficiency','rating','reco','Type','slot','set','level','rarity','enhance','mainStat','subStat1','subStat2','subStat3','subStat4']].to_csv('../outp/gear_reco.csv')
     df['hero'] = np.where( df.reco!='', df['reco'], df['hero'])
     df.to_pickle('../outp/equip_potential.pkl')
     df = df.sort_values(by = ['hero','Type','efficiency','enhance'])
