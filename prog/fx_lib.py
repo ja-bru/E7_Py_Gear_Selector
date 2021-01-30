@@ -393,7 +393,7 @@ def set_combination_iterate(gear_comb_dict, set4_list, set2_list, FORCE_4SET):
                 Set_3.extend([set_nm[2]]*len(itr))
                 Gear.extend(itr)
                 Complete.extend([1] * len(itr))
-    print('Progress: Step 1/4 Complete.  Number of combinations found', len(sc_output), "   ", datetime.now())
+    print('Progress: Step 1/4 Complete.  Number of combinations found', len(itr))
     print('For processing efficency, I would aim to keep combinations less than 1 million')
     return list(zip(Set_1,Set_2,Set_3,Complete,Gear))
 
