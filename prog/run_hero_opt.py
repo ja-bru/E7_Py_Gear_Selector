@@ -57,7 +57,7 @@ for j in range(0,len(hero_order)):
     run_counter = run_pass = 0
     while (run_pass < 1)&(run_counter < 1):
         gear_comb_dict = fx.set_combo(fx.equip_optimizer_input(df_items, char, hero_target['include_sets'], hero_target['Main_Stats']), fx.l4, fx.l2)  ## Output gear_comb_dict[ [set_nm] , [type] , [ID] ]
-        sc_output = fx.set_combination_iterate(gear_comb_dict, fx.set_4[fx.set_4.Set_Nm.isin(include_sets)].Set_Nm.values , fx.set_2[fx.set_2.Set_Nm.isin(include_sets)].Set_Nm.values, hero_target['Force_4Set'])
+        sc_output = fx.set_combination_iterate(gear_comb_dict, fx.set_4[fx.set_4.Set_Nm.isin(include_sets)].Set_Nm.values , fx.set_2[fx.set_2.Set_Nm.isin(include_sets)].Set_Nm.values, 0)
         if len(sc_output) == 0:
             print("No combinations were found for this hero. To skip this hero and begin the next here, enter [Skip]. ")
             print("To retry this hero, enter [Retry].  To end the optimization, enter [Exit].")
@@ -74,7 +74,7 @@ for j in range(0,len(hero_order)):
                 else: run_counter = 1
                 include_sets = fx.gen_input_sets([], exclude_sets)
                 hero_target['Main_Stats'] = []
-                hero_target['Force_4Set'] = 0
+                #hero_target['Force_4Set'] = 0
                 print("Retrying with the following sets ", include_sets)
             elif user_input == 'Skip':
                 run_pass = 1
