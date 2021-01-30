@@ -9,7 +9,7 @@ I used YufineThrowaway's [Reddit Post](https://www.reddit.com/r/EpicSeven/commen
 > <br> - P2 = (1 + artifact + exclusive_equipment + specialty_change + skill_upgrade)
 > <br> - CP = math.floor(P1 * P2)
 
-Part 1 is quite easy and this formula has been included in the CP calculation.  However, soe components of P2 are not included or require user input, so let's walk through them.
+Part 1 is quite easy and this formula has been included in the CP calculation.  However, some components of P2 are not included or require user input, so let's walk through them.
 | Factor | Description |
 | --- | -------------- |
 | Artifact | - Artifact level and rarity contribute to CP but are not included in the calculation, which adds a max value of 0.12 to P2.<br> - The additional stats from Artifacts can be added manually into the BonusStats column to be incorporated into final hero stat and P1 calculation. |
