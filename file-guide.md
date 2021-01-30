@@ -28,7 +28,7 @@ nav_order: 5
 <table>
 <tr><th> File </th><th> Folder </th><th> Description </th></tr>
 <tr><td> upd_items.json </td><td> outp </td><td> Saved data from optimization runs.  Outputs the updated version of <code>master_data['items']</code>.  Recommend copying this data to replace the items in <code>master_data.json</code> once you've regeared your heroes. </td></tr>
-<tr><td> gear_reco.csv </td><td> reco </td><td> Outputs the gear/heroes that have changed in the optimization runs </td></tr>
+<tr><td> gear_reco.csv </td><td> outp </td><td> Outputs the gear/heroes that have changed in the optimization runs </td></tr>
   <tr><td> equip_potential.csv </td><td> outp </td><td> Output from running <code>item_potential.py</code> that saved gear into <code>.csv</code> and provides efficiency ratings </td></tr>
 <tr><td> equip_potential.pkl </td><td> outp </td><td> Input file for items in optimization.  Pickle file format output of `item_potential.py` & gets overwritten when each hero completes via <code>Hero_Optimization_Notebook.ipynb</code> or <code>run_hero_opt.py</code>. </td></tr>
 <tr><td> upd_items.pkl </td><td> outp </td><td> Additional backup file saved from hero optimization. If you ever overwrite <code>equip_potential.pkl</code> by accident via <code>item_potential.py</code>, this is your data! </td></tr>
