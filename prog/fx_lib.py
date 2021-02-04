@@ -100,7 +100,8 @@ def item_json_to_df(data):
     #clean up formatted to increase success of raw input
     data['items'] = clean_up_dictionary_input(data['items'], 'ability', 'enhance')
     for sub in subs_cols:
-        data['items'] = clean_up_dictionary_input(data['items'], sub, ['',0])
+        data['items'] = clean_up_dictionary_input(data['items'], sub, ['X',0])
+    data['items'] = clean_up_dictionary_input(data['items'], 'hero', '')
     #define target input columns and formatting
     default_input_format =  {'hero': '','enhance': 0, 'slot': '', 'level': 0, 'set': '', 'rarity': '',
                             'mainStat': ['X', 0], 'subStat1': ['X', 0], 'subStat2': ['X', 0], 'subStat3': ['X', 0], 'subStat4': ['X', 0],
@@ -393,7 +394,7 @@ def set_combination_iterate(gear_comb_dict, set4_list, set2_list, FORCE_4SET):
                 Set_3.extend([set_nm[2]]*len(itr))
                 Gear.extend(itr)
                 Complete.extend([1] * len(itr))
-    print('Progress: Step 1/4 Complete.  Number of combinations found', len(itr))
+    print('Progress: Step 1/4 Complete.  Number of combinations found', len(Complete))
     print('For processing efficency, I would aim to keep combinations less than 1 million')
     return list(zip(Set_1,Set_2,Set_3,Complete,Gear))
 
@@ -579,10 +580,10 @@ def get_combo_stats(df, df_hero, mainst_df, subst_df, setst_df, hero_ee, char, t
     df['HP'] =   (pull_hero_stat_format(df_flag, grt.e7api_map['hp'], df_hero_stat)   *(100+mainst_df['HP%']+subst_df['HP%']+setst_df['HP']+hero_ee['HPP'])/100   +mainst_df['HP'] +subst_df['HP']+hero_ee['HP']).astype(int)
     df['DEF'] =  (pull_hero_stat_format(df_flag, grt.e7api_map['def'], df_hero_stat)   *(100+mainst_df['DEF%']+subst_df['DEF%']+setst_df['DEF']+hero_ee['DefP'])/100 +mainst_df['DEF'] +subst_df['DEF']+hero_ee['Def']).astype(int)
     df['SPD'] =  (pull_hero_stat_format(df_flag, grt.e7api_map['spd'], df_hero_stat) * ((100+setst_df['SPD'].values)/100) +mainst_df['SPD']+subst_df['SPD']+hero_ee['Spd'] ).astype(int)
-    df['CRIT'] = np.minimum((pull_hero_stat_format(df_flag, grt.e7api_map['crit'], df_hero_stat) +mainst_df['CRIT']+subst_df['CRIT']+setst_df['CRIT']+hero_ee['CChance']).astype(int),100)
-    df['CDMG'] = (pull_hero_stat_format(df_flag, grt.e7api_map['cdmg'], df_hero_stat)  +mainst_df['CDMG']+subst_df['CDMG']+setst_df['CDMG']+hero_ee['CDmg']).astype(int)
-    df['EFF'] =  np.minimum((pull_hero_stat_format(df_flag, grt.e7api_map['eff'], df_hero_stat) +mainst_df['EFF']+subst_df['EFF']+setst_df['EFF']+hero_ee['Eff']).astype(int),100)
-    df['RES'] =  np.minimum((pull_hero_stat_format(df_flag, grt.e7api_map['res'], df_hero_stat)    +mainst_df['RES']+subst_df['RES']+setst_df['RES']+hero_ee['Res']).astype(int),100)
+    df['CRIT'] = np.minimum((pull_hero_stat_format(df_flag, grt.e7api_map['crit'], df_hero_stat)*100 +mainst_df['CRIT']+subst_df['CRIT']+setst_df['CRIT']+hero_ee['CChance']).astype(int),100)
+    df['CDMG'] = (pull_hero_stat_format(df_flag, grt.e7api_map['cdmg'], df_hero_stat)*100  +mainst_df['CDMG']+subst_df['CDMG']+setst_df['CDMG']+hero_ee['CDmg']).astype(int)
+    df['EFF'] =  (pull_hero_stat_format(df_flag, grt.e7api_map['eff'], df_hero_stat)*100 +mainst_df['EFF']+subst_df['EFF']+setst_df['EFF']+hero_ee['Eff']).astype(int)
+    df['RES'] =  (pull_hero_stat_format(df_flag, grt.e7api_map['res'], df_hero_stat)*100    +mainst_df['RES']+subst_df['RES']+setst_df['RES']+hero_ee['Res']).astype(int)
     ### additional columns for prioritization
     # df['CATK'] = (df['ATK'] * df['CDMG'] / 100).astype(int)
     # df['CMult'] = df['CRIT'] / 100 * df['CDMG'] / 100

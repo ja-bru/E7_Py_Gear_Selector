@@ -31,6 +31,7 @@ for i in range(0,len(response_hero_list.json()['results'])):
             new_dict['level'] = hero_status_dict[status]
             new_dict['attribute'] = response_hero_list.json()['results'][i]['attribute']
             new_dict['role'] = response_hero_list.json()['results'][i]['role']
+            new_dict['zodiac'] = response_hero_list.json()['results'][i]['zodiac']
             new_dict['sc'] = 1 if len(hero_data['specialty_change']) > 0 else 0
             new_dict['ee'] = 1 if len(hero_data['ex_equip']) > 0 else 0
             new_dict['ee_stat'] = hero_data['ex_equip'][0]['stat']['type'] if len(hero_data['ex_equip']) > 0 else ''
