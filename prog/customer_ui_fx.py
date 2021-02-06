@@ -58,7 +58,8 @@ def run_widgets(hero_target, char_list, st_setting, char):
     ms4 = widgets.SelectMultiple(options=(m4o), value=(m4o if st_setting[3]!=1 else m4o[:-3]), rows=8 )
     ms5 = widgets.SelectMultiple(options=(m5o), value=(m5o if st_setting[3]!=1 else m5o[:-3]), rows=8 )
     ms_tuple = [ms3 , ms4, ms5]
-    return w,s4,s2,w1,w2,w3,w4,ms_tuple
+    r0 = widgets.RadioButtons(options= ['rating','wt_sub_rating','blended'], value='rating', disabled=False)
+    return w,s4,s2,w1,w2,w3,w4,ms_tuple,r0
 
 def update_settings(hero_target, w0, s4, s2, ms0):
     include_sets = []

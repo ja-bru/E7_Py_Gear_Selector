@@ -8,21 +8,21 @@ from datetime import datetime
 
 # GEAR REFERENCE TABLES
 d = [
-    ['ATK%', 'AtkP',  0,  0.13,  0.09,  0.05,  0.11111,  0.08,  0.07,  0.06],
-    ['DEF%', 'DefP',  7,  0.13,  0.09,  0.05,  0.11111,  0.08,  0.07,  0.06],
-    ['HP%',  'HPP',  5,  0.13,  0.09,  0.05,  0.11111,  0.08,  0.07,  0.06],
-    ['EFF',  'Eff',  9,  0.13,  0.09,  0.05,  0.11111,  0.08,  0.07,  0.06],
-    ['RES',  'Res',  10,  0.13,  0.09,  0.05,  0.11111,  0.08,  0.07,  0.06],
-    ['CDMG', 'CDmg',  4,  0.14,  0.08,  0.04,  0.125,  0.07,  0.06,  0.05],
-    ['CRIT', 'CChance',  3,  0.12,  0.06,  0.04,  0.166667,  0.05,  0.04,  0.04],
-    ['SPD',  'Spd',  2,  9,  5,  2,  0.2,  4,  4,  3],
-    ['DEF',  'Def',  8,  62,  44,  24,  0.025,  38,  33,  30],  ##assumes the maximum flat defense sub for lvl 85 gear is 40
-    ['ATK',  'Atk',  1,  103,  55,  30,  0.02222,  46,  40,  35], ##assumes the maximum flat attack sub for lvl 85 gear is 50
-    ['HP',   'HP',  6,  540,  240,  140,  0.005556,  200,  180,  160] ##assumes the maximum flat hp sub for lvl 85 gear is 225
+    ['ATK%', 'AtkP',   0, 0,    0.13,  0.09,  0.05,  0.11111,  0.08,  0.07,  0.06],
+    ['DEF%', 'DefP',  7, 1,     0.13,  0.09,  0.05,  0.11111,  0.08,  0.07,  0.06],
+    ['HP%',  'HPP',  5, 2,      0.13,  0.09,  0.05,  0.11111,  0.08,  0.07,  0.06],
+    ['SPD',  'Spd',  2, 3,         9,  5,  2,  0.2,  4,  4,  3],
+    ['CRIT', 'CChance',  3, 4,  0.12,  0.06,  0.04,  0.166667,  0.05,  0.04,  0.04],
+    ['CDMG', 'CDmg',  4, 5,     0.14,  0.08,  0.04,  0.125,  0.07,  0.06,  0.05],
+    ['EFF',  'Eff',  9, 6,      0.13,  0.09,  0.05,  0.11111,  0.08,  0.07,  0.06],
+    ['RES',  'Res',  10, 7,     0.13,  0.09,  0.05,  0.11111,  0.08,  0.07,  0.06],
+    ['ATK',  'Atk',  1, 8,       103,  55,  30,  0.02222,  46,  40,  35], ##assumes the maximum flat attack sub for lvl 85 gear is 55
+    ['DEF',  'Def',  8, 9,        62,  44,  24,  0.025,  38,  33,  30],  ##assumes the maximum flat defense sub for lvl 85 gear is 44
+    ['HP',   'HP',  6, 10,       540,  240,  140,  0.005556,  200,  180,  160] ##assumes the maximum flat hp sub for lvl 85 gear is 240
 ]
-cols = ['stat',  'stat_in','code','main_t7','max_t7','min_t7','multiplier','max_t6','max_t5','max_t4']
+cols = ['stat', 'stat_in','code','order','main_t7','max_t7','min_t7','multiplier','max_t6','max_t5','max_t4']
 gear_rating_lookup = pd.DataFrame(data = d, columns = cols)
-gear_rating_lookup.sort_values(by = ['code'], inplace=True)
+gear_rating_lookup.sort_values(by = ['order'], inplace=True)
 gear_rating_lookup.reset_index(inplace=True)
 grl = gear_rating_lookup.to_dict()
 

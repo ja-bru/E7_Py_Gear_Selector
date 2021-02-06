@@ -222,14 +222,14 @@ def item_potential(df):
     enhance = df['enhance']
     pwrup = int( (15-enhance) / 3 )
     minp = GR + pwrup/18 * np.where(gear_lvl<86,0.87,1)*np.where(gear_lvl<58,0.87,1)
-    df['minp'] = minp
+    df['minp'] = minp  ##minimum substat rating
     maxp = GR + pwrup/9 * np.where(gear_lvl<86,0.87,1)*np.where(gear_lvl<72,0.87,1)*np.where(gear_lvl<58,0.87,1)
-    df['maxp'] = maxp
+    df['maxp'] = maxp ##maximum substat rating
     df['spdp'] = np.where(main_type=='Spd',0,spd_potential(pwrup,rarity,spd_ind)) \
             * np.where(gear_lvl>88, 5, np.where(gear_lvl>57,4,3) )  + spd_val
     df['rating'] = main_rating * 1.4 + (minp+maxp)/2 + np.where(main_type == 'Spd', 0.2, 0) + spd_val*0.01
-    df['efficiency'] =  int(main_rating * 44 + GR * 66 + np.where(main_type == 'Spd', 2, 0) + spd_val * 0.1)
-    df['max_eff'] =  int(main_rating * 44 + maxp * 66 + np.where(main_type == 'Spd', 2, 0) + spd_val * 0.1)
+    df['efficiency'] =  int(main_rating * 44 + GR * 66 + np.where(main_type == 'Spd', 2, 0) + spd_val*0.1)
+    df['max_eff'] =  int(main_rating * 44 + maxp * 66 + np.where(main_type == 'Spd', 2, 0) + spd_val*0.1)
     df['current_eff'] = GR * 6.6 + main_rating * grt.gear_scaling[enhance]/5 * 4.4
     return df
 
@@ -245,12 +245,36 @@ L = [0,1,2,3,4,5]
 l4 = [",".join(map(str, comb)) for comb in itertools.combinations(L, 4)]
 l2 = [",".join(map(str, comb)) for comb in itertools.combinations(L, 2)]
 
-def equip_optimizer_input(item_df, hero_name, sets, list_main_stats = []):
+def weighted_gear_rating(item_df, target):
+    cols = gear_rating_lookup.stat.values
+    mult = np.where(item_df['enhance'] < st.GEAR_ENHANCE, grt.gear_scaling[st.GEAR_ENHANCE]/item_df['enhance'].map(grt.gear_scaling), 1)
+    main_stat = item_df['main_val'] * mult
+
+    adj = [1, 1, 1, 1, 1, 1, 1, 1, st.FLAT_SUB, st.FLAT_SUB, st.FLAT_SUB]
+    XX = item_df[cols].values
+    yy_temp = gear_rating_lookup[['stat','stat_in','max_t7','multiplier']]
+    yy = np.where(yy_temp['max_t7'] < 1, yy_temp['max_t7']*100, yy_temp['max_t7'])
+    stat_identity = (np.identity(11)*(adj/yy))
+    subs_array = XX.dot(stat_identity)
+    weight_array = np.array([target['ATK']['Weight'], target['DEF']['Weight'], target['HP']['Weight'],
+                target['SPD']['Weight'], target['CRIT']['Weight'], target['CDMG']['Weight'],
+                target['EFF']['Weight'], target['RES']['Weight'],
+                target['ATK']['Weight'], target['DEF']['Weight'], target['HP']['Weight'] ])
+    weight_sub_rating1 = subs_array.dot(weight_array[np.newaxis, :].T)
+    item_df['wt_sub_rating'] = weight_sub_rating1
+    lvl_array = item_df[['level']].to_numpy()
+    item_df['blended'] = weight_sub_rating1/np.max(weight_sub_rating1)*66 + lvl_array/2
+    return item_df
+
+def equip_optimizer_input(item_df, hero_name, target, list_main_stats = [], rank = 'rating'):
+    sets = target['include_sets']
     temp_df = item_df.copy()
     ##unlocked gear only
     temp_df = temp_df[ (temp_df.reco.isnull()) | (temp_df.reco == '') | (temp_df.reco == hero_name)]
     if st.NO_EQUIPPED_GEAR == 1:
         temp_df = temp_df[ (temp_df.hero == '') | (temp_df.hero.isnull()) | (temp_df.hero == hero_name) ]
+    ##gear rating for specific hero
+    temp_df = weighted_gear_rating(temp_df, target)
     ##specified sets
     temp_df = temp_df[ (temp_df.set.isin(sets)) ]
     ##remove equip without main stat
@@ -259,7 +283,7 @@ def equip_optimizer_input(item_df, hero_name, sets, list_main_stats = []):
             if len(list_main_stats[i])>0:
                 temp_df = temp_df.drop(temp_df[(temp_df.Type == i+3)&~(temp_df.main_tp.isin(list_main_stats[i]))].index)
     ##sort by
-    temp_df.sort_values(by = ['rating'], ascending = False, inplace=True)
+    temp_df.sort_values(by = [rank], ascending = False, inplace=True)
     if st.KEEP_CURR_GEAR == 1:
         temp_slots = temp_df[(temp_df.hero == hero_name)].Type.values
         temp_df = temp_df[(~temp_df.Type.isin(temp_slots)) | (temp_df.hero == hero_name)]
