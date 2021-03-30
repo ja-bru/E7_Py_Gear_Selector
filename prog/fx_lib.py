@@ -16,6 +16,9 @@ set_4 = set_df[['Set','Set_Nm','Set_Lg']][set_df.Set_Lg == 4]
 set_2 = set_df[['Set','Set_Nm','Set_Lg']][set_df.Set_Lg == 2]
 subs_cols = ['subStat1','subStat2','subStat3','subStat4']
 
+##standadize json output columns & order
+outp_cols = ['efficiency','hero','slot','level','set','rarity','enhance','mainStat','subStat1','subStat2','subStat3','subStat4','id','locked']
+
 # ******************************************
 # ### QA functions
 def verify_setup():
@@ -111,6 +114,7 @@ def item_json_to_df(data):
     #convert to dataframe
     df = pd.DataFrame(data_list, columns = default_input_format.keys())
     df = df[1:]
+    df['hero'].fillna(value='', inplace=True)
     df['grade'] = df['rarity'].map(grt.r_map)
     df['Type'] = df['slot'].map(grt.t_map)
     return df
@@ -422,7 +426,7 @@ def set_combination_iterate(gear_comb_dict, set4_list, set2_list, FORCE_4SET):
     print('For processing efficency, I would aim to keep combinations less than 1 million')
     return list(zip(Set_1,Set_2,Set_3,Complete,Gear))
 
-def final_gear_combos(sc_output, char):
+def final_gear_combos(sc_output, char, item_df):
     sc_df = pd.DataFrame(sc_output, columns =['Set_1', 'Set_2', 'Set_3','Complete','Gear'])
     sc_df['gear_list'] = sc_df.apply(lambda row: gear_split(row) , axis=1)
     sc_df[['0','1','2','3','4','5']] = pd.DataFrame(sc_df.gear_list.values.tolist(), index= sc_df.index)
@@ -431,10 +435,10 @@ def final_gear_combos(sc_output, char):
     try:
         nix=0
         for gid in range(0,6):
-            current_gear[str(gid)] = df_items[(df_items.hero == char) & (df_items.Type == gid)][['id']].values
-            val = df_items[(df_items.hero == char) & (df_items.Type == gid)][['reco']].values
+            current_gear[str(gid)] = item_df[(item_df.hero == char) & (item_df.Type == gid)][['id']].values
+            val = item_df[(item_df.hero == char) & (item_df.Type == gid)][['reco']].values
             if (val > '') & (val!=char): nix = 1
-        current_gear = get_set_bonus(current_gear, df_items)
+        current_gear = get_set_bonus(current_gear, item_df)
         if nix==1: current_gear['Complete'] = 'PREVIOUS'
         elif nix==0: current_gear['Complete'] = 'CURRENT'
         sc_df = sc_df.append(current_gear)
@@ -490,6 +494,7 @@ def gen_input_sets(include, exclude, autofill = 0):
         elif (x < 6):
             include.extend(set_df[(set_df.Set_Lg == 2)&(~set_df.Set_Nm.isin(exclude))&(~set_df.Set_Nm.isin(include))]['Set_Nm'].values)
             include.extend(set_df[(set_df.Set_Lg == 4)&(~set_df.Set_Nm.isin(exclude))&(~set_df.Set_Nm.isin(include))]['Set_Nm'].values)
+        include = np.array(include)
     return include
 
 # ******************************************

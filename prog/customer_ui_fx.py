@@ -152,6 +152,6 @@ def save_final_data(df):
     df['hero'] = np.where( df.reco!='', df['reco'], df['hero'])
     df.to_pickle('../outp/equip_potential.pkl')
     df = df.sort_values(by = ['hero','Type','efficiency','enhance'])
-    export2 = df[['efficiency','hero','enhance','slot','level','set','rarity','mainStat','subStat1','subStat2','subStat3','subStat4','id','locked']].to_dict('records')
+    export2 = df[fx.outp_cols].to_dict('records')
     with open('../outp/upd_items.json', 'w') as fp: json.dump(export2, fp)
     return

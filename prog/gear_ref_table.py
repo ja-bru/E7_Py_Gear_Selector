@@ -18,7 +18,7 @@ d = [
     ['RES',  'Res',  10, 7,     0.13,  0.09,  0.05,  0.11111,  0.08,  0.07,  0.06],
     ['ATK',  'Atk',  1, 8,       103,  55,  30,  0.02222,  46,  40,  35], ##assumes the maximum flat attack sub for lvl 85 gear is 55
     ['DEF',  'Def',  8, 9,        62,  44,  24,  0.025,  38,  33,  30],  ##assumes the maximum flat defense sub for lvl 85 gear is 44
-    ['HP',   'HP',  6, 10,       540,  240,  140,  0.005556,  200,  180,  160] ##assumes the maximum flat hp sub for lvl 85 gear is 240
+    ['HP',   'HP',  6, 10,       540,  240,  140,  0.005556,  205,  180,  160] ##assumes the maximum flat hp sub for lvl 85 gear is 240
 ]
 cols = ['stat', 'stat_in','code','order','main_t7','max_t7','min_t7','multiplier','max_t6','max_t5','max_t4']
 gear_rating_lookup = pd.DataFrame(data = d, columns = cols)
