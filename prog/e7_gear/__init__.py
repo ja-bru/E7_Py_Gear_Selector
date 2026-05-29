@@ -20,6 +20,7 @@ from e7_gear.io import (
     startup_msg1,
     startup_msg2,
 )
+from e7_gear.models import BuildConfig, GearItem
 from e7_gear.optimizer import (
     HeroOptimizationResult,
     load_target_stats,
@@ -52,6 +53,8 @@ from e7_gear.tables import (
 )
 
 __all__ = [
+    "BuildConfig",
+    "GearItem",
     "HeroOptimizationResult",
     "Settings",
     "bonus_eqp_sum",

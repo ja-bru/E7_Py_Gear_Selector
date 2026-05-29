@@ -9,6 +9,7 @@ import yaml
 
 import paths
 from e7_gear.combinator import final_gear_combos, prepare_gear_combinations
+from e7_gear.models import BuildConfig
 from e7_gear.perf import log_duration
 from e7_gear.recommender import prepare_hero_target, run_stat_reco
 from e7_gear.stat_engine import bonus_eqp_sum, get_combo_stats, mainst_sum, set_sum, subst_sum
@@ -18,7 +19,7 @@ from e7_gear.stat_engine import bonus_eqp_sum, get_combo_stats, mainst_sum, set_
 class HeroOptimizationResult:
     char: str
     build: str
-    hero_target: dict
+    hero_target: BuildConfig
     sc_output: list
     sc_df: pd.DataFrame
     odf: pd.DataFrame
@@ -37,7 +38,7 @@ def optimize_hero(
     char: str,
     df_items: pd.DataFrame,
     df_hero: pd.DataFrame,
-    hero_target: dict,
+    hero_target: BuildConfig,
     *,
     build: str = "",
     force_4set: int | None = None,

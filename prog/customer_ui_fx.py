@@ -1,6 +1,10 @@
 #### These are functions used in Jupyter notebook to enhance display and remove clutter
-from ipywidgets import interact, widgets, interactive, VBox, HBox
 import json
+import msvcrt
+import sys
+import time
+
+from ipywidgets import interact, widgets, interactive, VBox, HBox
 
 import fx_lib as fx
 import numpy as np

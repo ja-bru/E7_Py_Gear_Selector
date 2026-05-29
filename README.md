@@ -1,42 +1,93 @@
-# Equipment Selection and Hero Optimization for Epic Seven 
+# Equipment Selection and Hero Optimization for Epic Seven
 ## using Python / Jupyter Notebook
 
 ### About
 
-This program supports hero/equipment optimization for the mobile game Epic Seven.  I built this program as a way to help sort through equipment and quickly regear heroes during free unequipment events.  Managing equipment and gearing heroes in game can be tedious and I hope you can use this, or other tools available to improve your gameplay.
+This program supports hero/equipment optimization for the mobile game Epic Seven. It helps sort through equipment and quickly regear heroes during free unequipment events.
 
-This tool is built using Python and is not attached to a user interface.  The program can be run either in command line or in the provided Jupyter notebook.
+The tool runs from the **command line** or from the provided **Jupyter notebooks** in `prog/`.
 
-The tool takes in a `.json` file with gear and hero data.  A sample file is included which shows data formatting and works with [Compeanansi's OCR Tool](https://github.com/compeanansi/epic7) or json output from [Zarroc's Gear Optimizer](https://github.com/Zarroc2762/E7-Gear-Optimizer).
+Gear and hero data live in `inp/master_data.json`, compatible with [Compeanansi's OCR Tool](https://github.com/compeanansi/epic7) or JSON output from [Zarroc's Gear Optimizer](https://github.com/Zarroc2762/E7-Gear-Optimizer).
 
-### How to use
+### Requirements
 
-A detailed how-to is in progress. Here is a guide for [hero optimization via jupyter notebook](https://ja-bru.github.io/E7_Py_Gear_Selector/jupyter-walkthrough.html).  
+- **Python 3.8+**
+- Dependencies: `pip install -r requirements.txt`
+- Optional (notebooks): `pip install -e ".[notebook]"`
+- Optional (tests): `pip install -e ".[dev]"`
 
-##### Requirements
-- Python 2.7 or higher
-- Jupyter Notebook
-  - Download and install the 64 bit Anaconda python 3.x distribution for Windows: https://www.anaconda.com/products/individual
-- Screenshots of your gear or ready-formatted gear list
+### Project layout
 
-##### Quickstart
-- Ensure your gear is copied into the `master_data.json` file
-- Open the Jupyer Notebook `.ipynb` and follow the instructions
+```
+inp/          Input data (gear JSON, hero stats, build templates)
+outp/         Generated outputs (pickles, CSV, updated JSON)
+prog/
+  config.py   Runtime settings (GEAR_LIMIT, etc.)
+  paths.py    Project path constants
+  e7_gear/    Core library (scoring, combos, optimize_hero)
+  item_potential.py   Step 1: score all gear
+  run_hero_opt.py     Step 2: optimize heroes (CLI)
+tests/        Pytest suite
+```
+
+Existing scripts can still use `import fx_lib as fx` — it re-exports the `e7_gear` package.
+
+### Quickstart (CLI)
+
+From the `prog/` directory:
+
+```bash
+# 1. Score gear inventory
+python item_potential.py
+
+# 2. Optimize heroes (uses inp/character_inputs.yaml)
+python run_hero_opt.py
+```
+
+Results are written to `outp/gear_reco.csv` and `outp/upd_items.json`.
+
+### Quickstart (Notebook)
+
+1. Put your gear in `inp/master_data.json`
+2. Open `prog/Hero_Optimization_Notebook.ipynb`
+3. Run cells in order (the first cell runs `item_potential.py`)
+
+A detailed walkthrough is also at [jupyter-walkthrough](https://ja-bru.github.io/E7_Py_Gear_Selector/jupyter-walkthrough.html).
+
+### Configuration
+
+Edit `prog/config.py` or override in the notebook before running:
+
+| Setting | Purpose |
+|---------|---------|
+| `GEAR_LIMIT` | Top-N gear per slot used in search (affects speed) |
+| `AUTO_ADJ_GEAR_LIMIT` | Auto-reduce limit when combos exceed 1M |
+| `NO_EQUIPPED_GEAR` | Use unequipped gear only |
+| `MANUAL_SELECTION` | Prompt to pick gear vs fully automated (CLI) |
+
+Build templates and hero order: `inp/character_inputs.yaml`
+
+### Running tests
+
+From the repository root:
+
+```bash
+py -3 -m pytest tests -v
+```
 
 ### Features
-- Hero optimization
-- Can be set to run automatically for several heroes at a time _using command line only_
-- Select gear sets to include or exclude
-- Able to use unequipped gear, unlocked gear, or all gear 
-- Set minimum enhance level to use for optimization (default 12)
-- Weight specific stats to prioritize gear selection and substats
-- Force final hero stats
-- Add in stat bonuses from Exclusive Equipment, Memory Imprint, Artifacts, Specialty Change
 
-#### Restrictions
+- Hero optimization with weighted stat targets
+- Batch optimization for multiple heroes (CLI)
+- Set include/exclude filters
+- Unequipped, unlocked, or all gear modes
+- Minimum enhance level for stat projection
+- EE / imprint / artifact bonuses via hero `BonusStats`
+
+### Restrictions
+
 - Only outputs complete sets
-- No feature to select main stat for Necklace/Ring/Boots
-- Customizability requires more upfront effort tinkering with settings
-- CP calculation does not include Skill Enhance or Artifact [CP calculation explained](https://www.reddit.com/r/EpicSeven/comments/dvdfqp/guide_combat_power_calculation/)
+- No main-stat picker for Necklace / Ring / Boots yet
+- CP calculation excludes skill enhance and artifact CP
 - Assumes max awakened hero at level 50 or 60
-- Not yet connected to epic seven api for character data
+- Character base stats from `inp/character_data.csv` (refresh via `python api_get.py`)

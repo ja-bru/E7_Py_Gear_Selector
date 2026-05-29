@@ -5,10 +5,11 @@ import pandas as pd
 
 import config as st
 from e7_gear.combinator import gen_input_sets
+from e7_gear.models import BuildConfig
 from e7_gear.tables import set_4, set_df
 
 
-def resolve_build(char, target_stats):
+def resolve_build(char: str, target_stats: dict) -> tuple[str, BuildConfig]:
     if char in target_stats:
         build = char
     elif char in target_stats.get("Type", {}):
@@ -18,7 +19,7 @@ def resolve_build(char, target_stats):
     return build, target_stats[build]
 
 
-def prepare_hero_target(char, target_stats):
+def prepare_hero_target(char: str, target_stats: dict) -> tuple[str, BuildConfig]:
     """Resolve build template and populate include_sets on the hero target."""
     build, hero_target = resolve_build(char, target_stats)
     include_sets = gen_input_sets(hero_target["input_sets"], hero_target["exclude_sets"])

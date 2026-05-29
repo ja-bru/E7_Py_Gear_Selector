@@ -42,11 +42,11 @@ def hero_json_to_df(chars, data):
         right_on=[grt.e7api_map["hero"], grt.e7api_map["level"]],
     )
     if len(df["Name"][df[grt.e7api_map["atk"]].isnull()]) > 0:
-        print(
-            "Error: Character data missing from source file",
-            df["Name"][df[grt.e7api_map["atk"]].isnull()].values,
+        missing = df["Name"][df[grt.e7api_map["atk"]].isnull()].values
+        raise ValueError(
+            "Character data missing from source file. "
+            f"Add these heroes to inp/character_data.csv (or run api_get.py): {missing}"
         )
-        exit()
     return df, char_list
 
 
