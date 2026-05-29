@@ -1,9 +1,11 @@
 #### These are functions used in Jupyter notebook to enhance display and remove clutter
 from ipywidgets import interact, widgets, interactive, VBox, HBox
-import fx_lib as fx
-import pandas as pd
-import numpy as np
 import json
+
+import fx_lib as fx
+import numpy as np
+import pandas as pd
+import paths
 
 def readInput( caption, default, timeout = 30):
     start_time = time.time()
@@ -143,14 +145,14 @@ def save_hero(df, gear_selected, char):
     df['reco'] = np.where( df.id.isin(reco_list) , char, df['reco'])
     df['hero'] = np.where((df.hero == char)&(df.hero != df.reco),'',df.hero)
     df = df.sort_values(by = ['hero','reco','Type','efficiency','enhance'])
-    df.to_pickle('../outp/upd_items.pkl')
+    df.to_pickle(paths.UPD_ITEMS_PKL)
     return df
 
 def save_final_data(df):
-    df[~(df.reco=='')][['start_loc','hero','efficiency','rating','reco','Type','slot','set','level','rarity','enhance','mainStat','subStat1','subStat2','subStat3','subStat4']].to_csv('../outp/gear_reco.csv')
+    df[~(df.reco=='')][['start_loc','hero','efficiency','rating','reco','Type','slot','set','level','rarity','enhance','mainStat','subStat1','subStat2','subStat3','subStat4']].to_csv(paths.GEAR_RECO_CSV)
     df['hero'] = np.where( df.reco!='', df['reco'], df['hero'])
-    df.to_pickle('../outp/equip_potential.pkl')
+    df.to_pickle(paths.EQUIP_POTENTIAL_PKL)
     df = df.sort_values(by = ['hero','Type','efficiency','enhance'])
     export2 = df[['efficiency','hero','enhance','slot','level','set','rarity','mainStat','subStat1','subStat2','subStat3','subStat4','id','locked']].to_dict('records')
-    with open('../outp/upd_items.json', 'w') as fp: json.dump(export2, fp)
+    with open(paths.UPD_ITEMS_JSON, 'w') as fp: json.dump(export2, fp)
     return

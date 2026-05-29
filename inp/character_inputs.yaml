@@ -7,7 +7,7 @@ Hero_Order:
   ]
 
 Lock_Gear:
-  ## if setup file uses equipped gear, enter locked heroes below to prevent their gear being stolen
+  ## if config uses equipped gear, enter locked heroes below to prevent their gear being stolen
     [
       ''
     ]
