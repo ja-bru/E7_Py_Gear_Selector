@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 
 import config as st
+from e7_gear.perf import log_duration
+from e7_gear.stat_engine import GEAR_SLOT_COLS
 from e7_gear.tables import l2, l4, set_2, set_4, set_df
 
 
@@ -39,51 +41,70 @@ def equip_optimizer_input(item_df, hero_name, sets, list_main_stats=[], gear_lim
     return temp_df
 
 
-def set_combo(item_df, l4_codes, l2_codes):
-    gear_comb_dict = {}
+def _parse_slot_code(code):
+    return code.split(",")
+
+
+def _slot_id_arrays(temp_df2, code):
+    """Return one gear-id array per slot, or None when a slot has no candidates."""
+    arrays = []
+    for slot in _parse_slot_code(code):
+        ids = temp_df2[temp_df2.Type == int(slot)].id.values
+        if len(ids) == 0:
+            return None
+        arrays.append(ids)
+    return arrays
+
+
+def build_set_gear_index(item_df, l4_codes, l2_codes):
+    """Map each set/slot-code to slot id arrays (no cartesian products yet)."""
+    gear_index = {}
     for set_nm in set_2.Set_Nm:
         temp_dict = {}
         temp_df2 = item_df[(item_df.set == set_nm)]
-        for i in range(0, len(l2_codes)):
-            temp_l = list(set(l2_codes[i]))
-            temp_l.remove(",")
-            itr = list(
-                itertools.product(
-                    temp_df2[(temp_df2.Type == int(temp_l[0]))].id.values,
-                    temp_df2[(temp_df2.Type == int(temp_l[1]))].id.values,
-                )
-            )
-            temp_dict[l2_codes[i]] = itr
-        for i in range(0, len(l4_codes)):
-            temp_l = list(set(l4_codes[i]))
-            temp_l.remove(",")
-            itr = list(
-                itertools.product(
-                    temp_df2[(temp_df2.Type == int(temp_l[0]))].id.values,
-                    temp_df2[(temp_df2.Type == int(temp_l[1]))].id.values,
-                    temp_df2[(temp_df2.Type == int(temp_l[2]))].id.values,
-                    temp_df2[(temp_df2.Type == int(temp_l[3]))].id.values,
-                )
-            )
-            temp_dict[l4_codes[i]] = itr
-        gear_comb_dict[set_nm] = temp_dict
+        if temp_df2.empty:
+            continue
+        for code in l2_codes + l4_codes:
+            arrays = _slot_id_arrays(temp_df2, code)
+            if arrays is not None:
+                temp_dict[code] = arrays
+        if temp_dict:
+            gear_index[set_nm] = temp_dict
     for set_nm in set_4.Set_Nm:
         temp_dict = {}
         temp_df2 = item_df[(item_df.set == set_nm)]
-        for i in range(0, len(l4_codes)):
-            temp_l = list(set(l4_codes[i]))
-            temp_l.remove(",")
-            itr = list(
-                itertools.product(
-                    temp_df2[(temp_df2.Type == int(temp_l[0]))].id.values,
-                    temp_df2[(temp_df2.Type == int(temp_l[1]))].id.values,
-                    temp_df2[(temp_df2.Type == int(temp_l[2]))].id.values,
-                    temp_df2[(temp_df2.Type == int(temp_l[3]))].id.values,
-                )
-            )
-            temp_dict[l4_codes[i]] = itr
-        gear_comb_dict[set_nm] = temp_dict
-    return gear_comb_dict
+        if temp_df2.empty:
+            continue
+        for code in l4_codes:
+            arrays = _slot_id_arrays(temp_df2, code)
+            if arrays is not None:
+                temp_dict[code] = arrays
+        if temp_dict:
+            gear_index[set_nm] = temp_dict
+    return gear_index
+
+
+def set_combo(item_df, l4_codes, l2_codes):
+    """Backward-compatible alias for the slot-index builder."""
+    return build_set_gear_index(item_df, l4_codes, l2_codes)
+
+
+def _iter_slot_products(slot_arrays):
+    yield from itertools.product(*slot_arrays)
+
+
+def _flatten_gear(gear):
+    if isinstance(gear, tuple) and len(gear) == 2 and isinstance(gear[0], tuple):
+        return sorted([*gear[0], *gear[1]])
+    if isinstance(gear, tuple) and len(gear) == 3 and all(isinstance(part, tuple) for part in gear):
+        return sorted([*gear[0], *gear[1], *gear[2]])
+    flat = []
+    for part in gear:
+        if isinstance(part, tuple):
+            flat.extend(part)
+        else:
+            flat.append(part)
+    return sorted(flat)
 
 
 def l4comb(l4_codes, l2_codes):
@@ -120,10 +141,6 @@ def l2comb(l2_codes):
     return l2_comb
 
 
-def _parse_slot_code(code):
-    return code.split(",")
-
-
 def _set_product_count(item_df, set_nm, slot_code):
     temp_df2 = item_df[item_df.set == set_nm]
     count = 1
@@ -154,53 +171,73 @@ def estimate_set_combination_count(item_df, set4_list, set2_list, force_4set):
     return total
 
 
-def set_combination_iterate(gear_comb_dict, set4_list, set2_list, force_4set):
-    Set_1 = []
-    Set_2 = []
-    Set_3 = []
-    Gear = []
-    Complete = []
+def _append_combo(rows, seen, set_1, set_2, set_3, gear):
+    gear_list = _flatten_gear(gear)
+    key = tuple(gear_list)
+    if key in seen:
+        return
+    seen.add(key)
+    rows.append((set_1, set_2, set_3, 1, gear))
+
+
+def set_combination_iterate(gear_index, set4_list, set2_list, force_4set):
+    rows = []
+    seen = set()
+    raw_count = 0
     l4_comb = l4comb(l4, l2)
     l2_comb = l2comb(l2)
+
     for set_nm4 in set4_list:
+        if set_nm4 not in gear_index:
+            continue
         for set_nm2 in set2_list:
-            for a in range(0, len(l4_comb)):
-                code4 = l4_comb[a][0]
-                code2 = l4_comb[a][1]
-                g4_set = gear_comb_dict[set_nm4][code4]
-                g2_set = gear_comb_dict[set_nm2][code2]
-                itr = list(itertools.product(g4_set, g2_set))
-                Set_1.extend([set_nm4] * len(itr))
-                Set_2.extend([set_nm2] * len(itr))
-                Set_3.extend([None] * len(itr))
-                Gear.extend(itr)
-                Complete.extend([1] * len(itr))
+            if set_nm2 not in gear_index:
+                continue
+            for code4, code2 in l4_comb:
+                if code4 not in gear_index[set_nm4] or code2 not in gear_index[set_nm2]:
+                    continue
+                g4_arrays = gear_index[set_nm4][code4]
+                g2_arrays = gear_index[set_nm2][code2]
+                for g4 in _iter_slot_products(g4_arrays):
+                    for g2 in _iter_slot_products(g2_arrays):
+                        raw_count += 1
+                        _append_combo(rows, seen, set_nm4, set_nm2, None, (g4, g2))
+
     if force_4set != 1:
         for set_nm in itertools.combinations(set2_list, 3):
-            for a in range(0, len(l2_comb)):
-                code1 = l2_comb[a][0]
-                code2 = l2_comb[a][1]
-                code3 = l2_comb[a][2]
-                g2_set1 = gear_comb_dict[set_nm[0]][code1]
-                g2_set2 = gear_comb_dict[set_nm[1]][code2]
-                g2_set3 = gear_comb_dict[set_nm[2]][code3]
-                itr = list(itertools.product(g2_set1, g2_set2, g2_set3))
-                Set_1.extend([set_nm[0]] * len(itr))
-                Set_2.extend([set_nm[1]] * len(itr))
-                Set_3.extend([set_nm[2]] * len(itr))
-                Gear.extend(itr)
-                Complete.extend([1] * len(itr))
-    print("Progress: Step 1/4 Complete.  Number of combinations found", len(Complete))
+            if any(name not in gear_index for name in set_nm):
+                continue
+            for code1, code2, code3 in l2_comb:
+                if (
+                    code1 not in gear_index[set_nm[0]]
+                    or code2 not in gear_index[set_nm[1]]
+                    or code3 not in gear_index[set_nm[2]]
+                ):
+                    continue
+                g1 = gear_index[set_nm[0]][code1]
+                g2 = gear_index[set_nm[1]][code2]
+                g3 = gear_index[set_nm[2]][code3]
+                for part1 in _iter_slot_products(g1):
+                    for part2 in _iter_slot_products(g2):
+                        for part3 in _iter_slot_products(g3):
+                            raw_count += 1
+                            _append_combo(rows, seen, set_nm[0], set_nm[1], set_nm[2], (part1, part2, part3))
+
+    print("Progress: Step 1/4 Complete.  Number of combinations found", len(rows))
+    if raw_count > len(rows):
+        print(f"[perf] deduplicated {raw_count - len(rows):,} duplicate gear sets during generation")
     print("For processing efficency, I would aim to keep combinations less than 1 million")
-    return list(zip(Set_1, Set_2, Set_3, Complete, Gear))
+    return rows
 
 
 def prepare_gear_combinations(df_items, char, include_sets, main_stats, force_4set=0):
     set4_list = set_4[set_4.Set_Nm.isin(include_sets)].Set_Nm.values
     set2_list = set_2[set_2.Set_Nm.isin(include_sets)].Set_Nm.values
     gear_limit = st.GEAR_LIMIT
-    filtered_df = equip_optimizer_input(df_items, char, include_sets, main_stats, gear_limit=gear_limit)
-    combo_count = estimate_set_combination_count(filtered_df, set4_list, set2_list, force_4set)
+
+    with log_duration("filter gear candidates"):
+        filtered_df = equip_optimizer_input(df_items, char, include_sets, main_stats, gear_limit=gear_limit)
+        combo_count = estimate_set_combination_count(filtered_df, set4_list, set2_list, force_4set)
 
     while combo_count > st.COMBO_COUNT_LIMIT and st.AUTO_ADJ_GEAR_LIMIT and gear_limit > 1:
         gear_limit -= 1
@@ -219,31 +256,27 @@ def prepare_gear_combinations(df_items, char, include_sets, main_stats, force_4s
     elif gear_limit != st.GEAR_LIMIT:
         print(f"Using GEAR_LIMIT={gear_limit} for this hero (default is {st.GEAR_LIMIT})")
 
-    gear_comb_dict = set_combo(filtered_df, l4, l2)
-    sc_output = set_combination_iterate(gear_comb_dict, set4_list, set2_list, force_4set)
+    print(f"[perf] estimated combinations before search: {combo_count:,}")
+
+    with log_duration("build gear combinations"):
+        gear_index = build_set_gear_index(filtered_df, l4, l2)
+        sc_output = set_combination_iterate(gear_index, set4_list, set2_list, force_4set)
+
     return sc_output, gear_limit
 
 
 def gear_split(df):
-    if df.Set_3 == None:
-        u, v = df.Gear
-        m, n, o, p = u
-        q, r = v
-    else:
-        u, v, w = df.Gear
-        m, n = u
-        o, p = v
-        q, r = w
-    return list(np.sort([m, n, o, p, q, r]))
+    return _flatten_gear(df.Gear)
 
 
 def final_gear_combos(sc_output, char, df_items):
+    gear_lists = [_flatten_gear(row[4]) for row in sc_output]
     sc_df = pd.DataFrame(sc_output, columns=["Set_1", "Set_2", "Set_3", "Complete", "Gear"])
-    sc_df["gear_list"] = sc_df.apply(lambda row: gear_split(row), axis=1)
-    sc_df[["0", "1", "2", "3", "4", "5"]] = pd.DataFrame(sc_df.gear_list.values.tolist(), index=sc_df.index)
-    sc_df = sc_df.drop_duplicates(["0", "1", "2", "3", "4", "5"])
+    sc_df["gear_list"] = gear_lists
+    sc_df[GEAR_SLOT_COLS] = pd.DataFrame(gear_lists, index=sc_df.index)
+
     current_gear = pd.DataFrame(
-        columns=["Set_1", "Set_2", "Set_3", "Complete", "Gear", "gear_list", "0", "1", "2", "3", "4", "5"],
+        columns=["Set_1", "Set_2", "Set_3", "Complete", "Gear", "gear_list", *GEAR_SLOT_COLS],
         index=["0"],
     )
     try:
@@ -317,9 +350,9 @@ def gen_input_sets(include, exclude, autofill=0):
 
 def get_set_bonus(df, item_df):
     if len(df) > 1:
-        gears = df[["0", "1", "2", "3", "4", "5"]].values
+        gears = df[GEAR_SLOT_COLS].values
     else:
-        gears = df[["0", "1", "2", "3", "4", "5"]].values[0]
+        gears = df[GEAR_SLOT_COLS].values[0]
     set_stats = item_df[item_df.id.isin(gears)].groupby(["set"]).count()[["id"]]
     set_stats = set_df.merge(set_stats, how="inner", left_on="Set_Nm", right_on="set")
     set_stats["Mult"] = (set_stats.id / set_stats.Set_Lg).astype(int)

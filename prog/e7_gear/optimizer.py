@@ -9,6 +9,7 @@ import yaml
 
 import paths
 from e7_gear.combinator import final_gear_combos, prepare_gear_combinations
+from e7_gear.perf import log_duration
 from e7_gear.recommender import prepare_hero_target, run_stat_reco
 from e7_gear.stat_engine import bonus_eqp_sum, get_combo_stats, mainst_sum, set_sum, subst_sum
 
@@ -49,28 +50,32 @@ def optimize_hero(
     if force_4set is None:
         force_4set = hero_target.get("Force_4Set", 0)
 
-    sc_output, gear_limit = prepare_gear_combinations(
-        df_items,
-        char,
-        hero_target["include_sets"],
-        hero_target["Main_Stats"],
-        force_4set=force_4set,
-    )
+    with log_duration(f"{char}: gear combination search"):
+        sc_output, gear_limit = prepare_gear_combinations(
+            df_items,
+            char,
+            hero_target["include_sets"],
+            hero_target["Main_Stats"],
+            force_4set=force_4set,
+        )
     if len(sc_output) == 0:
         return None
 
-    sc_df, hero_with_gear = final_gear_combos(sc_output, char, df_items)
-    odf = get_combo_stats(
-        sc_df,
-        df_hero,
-        mainst_sum(sc_df, df_items),
-        subst_sum(sc_df, df_items),
-        set_sum(sc_df),
-        bonus_eqp_sum(df_hero[df_hero.Name == char]),
-        char,
-        hero_target,
-    )
-    idx_reco, choice_df = run_stat_reco(odf, hero_with_gear, hero_target)
+    with log_duration(f"{char}: dedupe and score combinations"):
+        sc_df, hero_with_gear = final_gear_combos(sc_output, char, df_items)
+        odf = get_combo_stats(
+            sc_df,
+            df_hero,
+            mainst_sum(sc_df, df_items),
+            subst_sum(sc_df, df_items),
+            set_sum(sc_df),
+            bonus_eqp_sum(df_hero[df_hero.Name == char]),
+            char,
+            hero_target,
+        )
+        idx_reco, choice_df = run_stat_reco(odf, hero_with_gear, hero_target)
+
+    print(f"[perf] {char}: scored {len(odf):,} combinations for recommendation")
 
     return HeroOptimizationResult(
         char=char,
@@ -94,5 +99,4 @@ def optimize_hero_from_template(
 ) -> HeroOptimizationResult | None:
     """Resolve build template from target_stats, then optimize."""
     build, hero_target = prepare_hero_target(char, target_stats)
-    result = optimize_hero(char, df_items, df_hero, hero_target, build=build)
-    return result
+    return optimize_hero(char, df_items, df_hero, hero_target, build=build)

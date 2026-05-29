@@ -27,7 +27,7 @@ from e7_gear.optimizer import (
     optimize_hero_from_template,
 )
 from e7_gear.recommender import prepare_hero_target, resolve_build, run_stat_reco, start_hero
-from e7_gear.scoring import gear_stats, item_potential, verify_item_input, verify_main_stats
+from e7_gear.scoring import gear_stats, item_potential, score_all_items, verify_item_input, verify_main_stats
 from e7_gear.settings import Settings, verify_settings
 from e7_gear.stat_engine import (
     bonus_eqp_sum,
@@ -84,6 +84,7 @@ __all__ = [
     "pull_hero_stat_format",
     "resolve_build",
     "run_stat_reco",
+    "score_all_items",
     "set_2",
     "set_4",
     "set_combo",

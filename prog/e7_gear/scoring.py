@@ -60,54 +60,58 @@ def verify_item_input(df):
 
 
 def gear_stats(df):
-    newcols = {}
-    for code in gear_rating_lookup.code.values:
-        col = [0] * len(df)
-        for in_col in subs_cols:
-            temp_df = df.copy()
-            temp_df[["b1", "b2"]] = pd.DataFrame(temp_df[in_col].tolist(), index=temp_df.index)
-            m = np.where(temp_df["b1"] == grl["stat_in"][code], 1, 0)
-            t = m * np.where(np.isnan(temp_df["b2"]), 0, temp_df["b2"])
-            col += t
-        newcols[grl["stat"][code]] = col
+    """Extract substat values into stat columns (vectorized over substats)."""
+    newcols = {grl["stat"][code]: np.zeros(len(df)) for code in gear_rating_lookup.code.values}
+    for in_col in subs_cols:
+        parsed = pd.DataFrame(df[in_col].tolist(), index=df.index, columns=["b1", "b2"])
+        values = parsed["b2"].fillna(0).to_numpy()
+        for code in gear_rating_lookup.code.values:
+            stat_in = grl["stat_in"][code]
+            mask = (parsed["b1"] == stat_in).to_numpy()
+            newcols[grl["stat"][code]] += np.where(mask, values, 0)
     return pd.concat([df, pd.DataFrame(newcols, index=df.index)], axis=1)
 
 
 def spd_potential(p, g, s):
     v1 = np.where((s == 0) & (g > 0) & (p > g), 2, 0)
-    v2 = np.where(s == 1, max(min(p, p - g), np.where(p > 0, 1, 0)), 0)
+    v2 = np.where(s == 1, np.maximum(np.minimum(p, p - g), np.where(p > 0, 1, 0)), 0)
     return v1 + v2
 
 
-def item_potential(df):
-    GR = 0
-    gear_lvl = df["level"]
-    main_type = df["mainStat"][0]
-    main_val = df["mainStat"][1]
-    df["main_tp"] = main_type
-    df["main_val"] = main_val
-    main_rating = gear_tier[gear_tier.Level == gear_lvl]["X_Factor"].values[0]
-    main_rating = np.where(
-        (df["Type"] >= 3) & (main_type in ["Atk", "HP", "Def"]),
-        main_rating * st.FLAT_MAIN,
-        main_rating,
-    )
-    rarity = df["grade"]
+def score_all_items(df: pd.DataFrame) -> pd.DataFrame:
+    """Vectorized gear potential scoring for an entire inventory dataframe."""
+    df = df.copy()
+    main_parts = pd.DataFrame(df["mainStat"].tolist(), index=df.index, columns=["main_tp", "main_val"])
+    df["main_tp"] = main_parts["main_tp"]
+    df["main_val"] = main_parts["main_val"]
+
+    tier_factors = gear_tier.set_index("Level")["X_Factor"]
+    main_rating = df["level"].map(tier_factors).to_numpy(dtype=float)
+    flat_mask = (df["Type"].to_numpy() >= 3) & df["main_tp"].isin(["Atk", "HP", "Def"]).to_numpy()
+    main_rating = np.where(flat_mask, main_rating * st.FLAT_MAIN, main_rating)
+
+    gr_total = np.zeros(len(df))
     for stat in gear_rating_lookup.stat.values:
-        val = df[stat]
-        x = gear_rating_lookup[gear_rating_lookup.stat == stat]["multiplier"].values
-        z = x[0] / 9
-        rating = val * z * np.where(stat in ["ATK", "HP", "DEF"], st.FLAT_SUB, 1)
-        GR = GR + rating
-    df["GR"] = GR
-    spd_ind = np.where(df["SPD"] > 0, 1, 0)
-    spd_val = df["SPD"]
-    enhance = df["enhance"]
-    pwrup = int((15 - enhance) / 3)
-    minp = GR + pwrup / 18 * np.where(gear_lvl < 86, 0.87, 1) * np.where(gear_lvl < 58, 0.87, 1)
+        if stat not in df.columns:
+            continue
+        val = df[stat].to_numpy(dtype=float)
+        mult = gear_rating_lookup.loc[gear_rating_lookup.stat == stat, "multiplier"].iloc[0] / 9
+        weight = st.FLAT_SUB if stat in ["ATK", "HP", "DEF"] else 1
+        gr_total += val * mult * weight
+    df["GR"] = gr_total
+
+    gear_lvl = df["level"].to_numpy()
+    enhance = df["enhance"].to_numpy()
+    main_type = df["main_tp"].to_numpy()
+    rarity = df["grade"].to_numpy()
+    spd_ind = (df["SPD"].to_numpy() > 0).astype(int)
+    spd_val = df["SPD"].to_numpy(dtype=float)
+    pwrup = ((15 - enhance) // 3).astype(int)
+
+    minp = gr_total + pwrup / 18 * np.where(gear_lvl < 86, 0.87, 1) * np.where(gear_lvl < 58, 0.87, 1)
     df["minp"] = minp
     maxp = (
-        GR
+        gr_total
         + pwrup / 9
         * np.where(gear_lvl < 86, 0.87, 1)
         * np.where(gear_lvl < 72, 0.87, 1)
@@ -120,7 +124,15 @@ def item_potential(df):
         + spd_val
     )
     df["rating"] = main_rating * 1.4 + (minp + maxp) / 2 + np.where(main_type == "Spd", 0.2, 0) + spd_val * 0.01
-    df["efficiency"] = int(main_rating * 44 + GR * 66 + np.where(main_type == "Spd", 2, 0) + spd_val * 0.1)
-    df["max_eff"] = int(main_rating * 44 + maxp * 66 + np.where(main_type == "Spd", 2, 0) + spd_val * 0.1)
-    df["current_eff"] = GR * 6.6 + main_rating * grt.gear_scaling[enhance] / 5 * 4.4
+
+    eff_base = main_rating * 44 + gr_total * 66 + np.where(main_type == "Spd", 2, 0) + spd_val * 0.1
+    df["efficiency"] = eff_base.astype(int)
+    df["max_eff"] = (main_rating * 44 + maxp * 66 + np.where(main_type == "Spd", 2, 0) + spd_val * 0.1).astype(int)
+    scaling = pd.Series(enhance, index=df.index).map(grt.gear_scaling).to_numpy(dtype=float)
+    df["current_eff"] = gr_total * 6.6 + main_rating * scaling / 5 * 4.4
     return df
+
+
+def item_potential(df):
+    """Score a single gear row (kept for compatibility)."""
+    return score_all_items(df.to_frame().T).iloc[0]

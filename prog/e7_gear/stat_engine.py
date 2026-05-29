@@ -7,91 +7,74 @@ import config as st
 import gear_ref_table as grt
 from e7_gear.tables import gear_rating_lookup, grl, set_df
 
+GEAR_SLOT_COLS = ["0", "1", "2", "3", "4", "5"]
 
-def enhance_mult(x):
-    y = st.GEAR_ENHANCE
-    return np.where((x < y), grt.gear_scaling[y] / x.map(grt.gear_scaling), 1)
+
+def enhance_mult(enhance_series):
+    target = st.GEAR_ENHANCE
+    mapped = enhance_series.map(grt.gear_scaling)
+    return np.where(enhance_series < target, grt.gear_scaling[target] / mapped, 1)
 
 
 def set_sum(df):
     setst_df = df.copy()
     for stat in np.unique(set_df[set_df.Bonus_Stat != "NA"].Bonus_Stat.values):
-        mult = [0] * len(setst_df)
+        mult = np.zeros(len(setst_df))
         temp_set = set_df[set_df.Bonus_Stat == stat]
         mult += np.where(setst_df["Set_1"].isin(temp_set.Set_Nm), 1, 0)
         mult += np.where(setst_df["Set_2"].isin(temp_set.Set_Nm), 1, 0)
         mult += np.where(setst_df["Set_3"].isin(temp_set.Set_Nm), 1, 0)
-        temp_bonus = temp_set.Bonus.values * mult
-        setst_df[stat] = temp_bonus
+        setst_df[stat] = temp_set.Bonus.values * mult
     return setst_df
 
 
+def _slot_lookup(item_df, columns):
+    """Index gear rows by id for fast slot lookups."""
+    return item_df.set_index("id")[columns]
+
+
 def subst_sum(df, item_df):
-    subst_cols = list(gear_rating_lookup.stat)
-    subst_cols.extend(["id", "GR"])
+    stat_cols = list(gear_rating_lookup.stat) + ["GR"]
+    indexed = _slot_lookup(item_df, stat_cols)
+    slot_ids = df[GEAR_SLOT_COLS].to_numpy()
+    n = len(df)
+    totals = {stat: np.zeros(n, dtype=float) for stat in stat_cols}
+
+    for slot in range(6):
+        matched = indexed.reindex(slot_ids[:, slot])
+        for stat in stat_cols:
+            totals[stat] += matched[stat].fillna(0).to_numpy()
+
     subst_df = df.copy()
-    for subst in subst_cols:
-        subst_df[subst] = 0
-    for col in range(0, 6):
-        subst_df = pd.merge(
-            subst_df,
-            item_df[subst_cols],
-            how="left",
-            left_on=[str(col)],
-            right_on=["id"],
-            suffixes=("", "_" + str(col)),
-        )
-    for subst in gear_rating_lookup.stat.values:
-        subst_df[subst] = (
-            subst_df[subst + "_0"]
-            + subst_df[subst + "_1"]
-            + subst_df[subst + "_2"]
-            + subst_df[subst + "_3"]
-            + subst_df[subst + "_4"]
-            + subst_df[subst + "_5"]
-        )
-    drop_cols = []
-    for subst in subst_cols:
-        for suffix in ["_0", "_1", "_2", "_3", "_4", "_5"]:
-            drop_cols.append(subst + suffix)
-    drop_cols.extend(["id", "Gear"])
-    subst_df.drop(columns=drop_cols, axis=1, inplace=True)
+    for stat in stat_cols:
+        subst_df[stat] = totals[stat]
+    drop_cols = ["id", "Gear"]
+    subst_df.drop(columns=[c for c in drop_cols if c in subst_df.columns], inplace=True, errors="ignore")
     return subst_df
 
 
 def mainst_sum(df, item_df):
+    lookup_cols = ["main_tp", "main_val", "enhance"]
+    indexed = _slot_lookup(item_df, lookup_cols)
+    slot_ids = df[GEAR_SLOT_COLS].to_numpy()
+    n = len(df)
+    stat_totals = {stat: np.zeros(n, dtype=float) for stat in gear_rating_lookup.stat.values}
+
+    for slot in range(6):
+        matched = indexed.reindex(slot_ids[:, slot])
+        main_tp = matched["main_tp"]
+        main_val = matched["main_val"].fillna(0).to_numpy()
+        enh_mult = enhance_mult(matched["enhance"].fillna(0))
+        mapped_stats = main_tp.map(grt.s_map)
+        for stat in gear_rating_lookup.stat.values:
+            mask = (mapped_stats == stat).to_numpy()
+            stat_totals[stat] += np.where(mask, (main_val * enh_mult).astype(int), 0)
+
     mainst_df = df.copy()
-    mainst_cols = ["id", "main_tp", "main_val", "level", "enhance"]
-    for subst in mainst_cols:
-        mainst_df[subst] = 0
-    for subst in gear_rating_lookup.stat.values:
-        mainst_df[subst] = 0
-    for col in range(0, 6):
-        mainst_df = pd.merge(
-            mainst_df,
-            item_df[mainst_cols],
-            how="left",
-            left_on=[str(col)],
-            right_on=["id"],
-            suffixes=("", "_" + str(col)),
-        )
     for stat in gear_rating_lookup.stat.values:
-        for i in range(0, 6):
-            col1 = "main_tp_" + str(i)
-            col2 = "main_val_" + str(i)
-            col3 = "enhance_" + str(i)
-            enh_mult = enhance_mult(mainst_df[col3])
-            mainst_df[stat] += np.where(
-                mainst_df[col1].map(grt.s_map) == stat,
-                (mainst_df[col2] * enh_mult).astype(int),
-                0,
-            )
-    drop_cols = []
-    for subst in ["id", "level", "main_val", "main_tp", "enhance"]:
-        for suffix in ["_0", "_1", "_2", "_3", "_4", "_5"]:
-            drop_cols.append(subst + suffix)
-    drop_cols.extend(["id", "Gear", "main_tp", "main_val", "level", "enhance"])
-    mainst_df.drop(columns=drop_cols, axis=1, inplace=True)
+        mainst_df[stat] = stat_totals[stat]
+    drop_cols = ["id", "Gear", "main_tp", "main_val", "level", "enhance"]
+    mainst_df.drop(columns=[c for c in drop_cols if c in mainst_df.columns], inplace=True, errors="ignore")
     return mainst_df
 
 

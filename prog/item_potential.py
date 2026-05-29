@@ -14,13 +14,17 @@ def main():
 
     df_items = fx.item_json_to_df(data)
     df_items = fx.gear_stats(df_items)
-    df_items['error_check'] = df_items.apply(lambda row: fx.verify_item_input(row), axis=1)
-    err_ids = df_items[df_items.error_check > 0]['id'].copy()
+    df_items["error_check"] = df_items.apply(lambda row: fx.verify_item_input(row), axis=1)
+    err_ids = df_items[df_items.error_check > 0]["id"].copy()
     print("Hey, we noticed some of your gear had abnormal values, so we think you should take a quick look. ")
     print("There are", err_ids.count(), "items we picked up in QA: ", err_ids.values)
     print("Note: Epic Seven does not use consistent main stat or sub stat values based on gear level, so this alert may produce false positives with event gear or lvl90 gear")
 
-    df_items = df_items.apply(lambda row: fx.item_potential(row), axis=1)
+    from e7_gear.perf import log_duration
+    from e7_gear.scoring import score_all_items
+
+    with log_duration("score all gear items"):
+        df_items = score_all_items(df_items)
 
     df_items = df_items.sort_values(by=['hero', 'Type', 'efficiency', 'enhance'])
     df_items.to_csv(paths.EQUIP_POTENTIAL_CSV)
