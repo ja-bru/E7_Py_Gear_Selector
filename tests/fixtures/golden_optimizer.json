@@ -1,0 +1,11 @@
+{
+  "char": "Kayron",
+  "build": "General",
+  "force_4set": 0,
+  "required_gear_ids": ["spd_w", "spd_h", "spd_a", "spd_n", "crt_r"],
+  "boot_options": ["crt_b", "crt_b2"],
+  "min_combo_count": 1,
+  "max_combo_count": 32,
+  "min_spd": 200,
+  "min_crit": 85
+}
