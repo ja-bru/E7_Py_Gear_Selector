@@ -15,6 +15,14 @@ dependencies = [
 [project.optional-dependencies]
 notebook = ["jupyter>=1.0.0"]
 dev = ["pytest>=7.0"]
+gui = ["pyside6>=6.5"]
+
+[project.scripts]
+e7-gear-gui = "gui.app:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["gui*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
